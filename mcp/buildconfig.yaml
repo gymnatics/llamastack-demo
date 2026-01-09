@@ -26,6 +26,6 @@ spec:
   strategy:
     type: Docker
     dockerStrategy:
-      dockerfilePath: Dockerfile
+      dockerfilePath: Dockerfile.openshift
   triggers: []
 

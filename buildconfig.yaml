@@ -16,7 +16,7 @@ spec:
     type: Binary
   strategy:
     dockerStrategy:
-      dockerfilePath: Dockerfile
+      dockerfilePath: Dockerfile.openshift
     type: Docker
   successfulBuildsHistoryLimit: 3
   failedBuildsHistoryLimit: 3

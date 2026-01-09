@@ -1,7 +1,7 @@
-# Weather Data MCP Server - Kubernetes/Docker Version
-# Uses public Python image (no authentication required)
+# Weather Data MCP Server - OpenShift Version
+# Uses Red Hat UBI image for OpenShift compatibility
 
-FROM python:3.12-slim
+FROM registry.redhat.io/ubi9/python-312:latest
 
 WORKDIR /app
 
@@ -10,6 +10,9 @@ RUN pip install --no-cache-dir mcp motor uvicorn
 
 # Copy application
 COPY http_app.py .
+
+# Set to non-root user for OpenShift compatibility
+USER 1001
 
 # Environment variables (override these in your deployment)
 ENV MCP_SERVER_NAME="weather-data" \
