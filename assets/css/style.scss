@@ -1,0 +1,83 @@
+---
+---
+
+@import "jekyll-theme-midnight";
+
+/* Hide the "./" prefix in the header */
+header h1:before {
+  content: none !important;
+}
+
+/* Clean up the header title */
+header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Better heading colors - white instead of theme color */
+h1, h2, h3, h4, h5, h6 {
+  color: #fff;
+}
+
+/* Improve code block styling */
+pre {
+  background: #1a1a2e;
+  border: 1px solid #3a3a5a;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+code {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Better table styling */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+table th {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 2px solid #4a4a6a;
+}
+
+table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #3a3a5a;
+}
+
+table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Blockquote styling */
+blockquote {
+  background: rgba(100, 150, 255, 0.1);
+  border-left: 4px solid #6496ff;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Links */
+a {
+  color: #6496ff;
+}
+
+a:hover {
+  color: #8ab4ff;
+}
+
+/* Badge images - inline */
+p > a > img[src*="shields.io"] {
+  display: inline-block;
+  margin-right: 0.5rem;
+}
