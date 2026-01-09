@@ -1,290 +1,252 @@
 ---
 ---
 
-@import "jekyll-theme-hacker";
+@import "jekyll-theme-cayman";
 
 /* 
- * Light Mode Only - Clean, Professional
- * Desaturated colors following Gestalt principles
- * - Hierarchy through weight and size, not color intensity
- * - Muted accent colors that don't compete for attention
- * - High readability with proper contrast ratios
+ * Clean Light Theme - Cayman base with refined colors
+ * Professional, readable, no harsh contrasts
  */
 
 :root {
-  --bg-primary: #fafafa;
-  --bg-surface: #ffffff;
-  --bg-elevated: #f3f4f6;
-  --text-primary: #1f2937;
-  --text-secondary: #4b5563;
-  --text-muted: #9ca3af;
-  --accent: #6b7280;           /* Muted gray-blue */
-  --accent-hover: #4b5563;
-  --accent-muted: rgba(107, 114, 128, 0.08);
-  --border: #e5e7eb;
-  --link: #4f5d75;             /* Desaturated slate */
-  --link-hover: #2d3748;
+  --text-primary: #24292f;
+  --text-secondary: #57606a;
+  --text-muted: #8b949e;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --border: #d0d7de;
+  --link: #0969da;
+  --link-hover: #0550ae;
 }
 
-/* Force light mode background */
-body {
-  background: var(--bg-primary) !important;
-  color: var(--text-primary) !important;
-  line-height: 1.75;
+/* Header - softer gradient, not too saturated */
+.page-header {
+  background-image: linear-gradient(120deg, #4a5568, #2d3748) !important;
+  padding: 2rem 1rem !important;
 }
 
-/* === HEADER === */
-header {
-  background: var(--bg-surface) !important;
-  border-bottom: 1px solid var(--border) !important;
-  padding: 2rem 0 !important;
-}
-
-header h1 {
-  color: var(--text-primary) !important;
+.page-header h1.project-name {
   font-size: 2.25rem !important;
   font-weight: 700 !important;
-  letter-spacing: -0.5px;
 }
 
-header h1:before { content: "" !important; }
-
-header h2 {
-  color: var(--text-secondary) !important;
+.page-header h2.project-tagline {
   font-size: 1rem !important;
   font-weight: 400 !important;
+  opacity: 0.9;
 }
 
-/* Hide the ugly GitHub button or restyle it */
-header .btn {
-  background: var(--bg-elevated) !important;
-  color: var(--text-secondary) !important;
-  border: 1px solid var(--border) !important;
+/* GitHub button - visible and clean */
+.btn {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  padding: 0.6rem 1.2rem !important;
   border-radius: 6px !important;
-  padding: 0.5rem 1rem !important;
   font-size: 0.875rem !important;
-  text-decoration: none !important;
-}
-
-header .btn:hover {
-  background: var(--border) !important;
-  color: var(--text-primary) !important;
-}
-
-/* === MAIN CONTENT AREA === */
-section {
-  background: var(--bg-surface) !important;
-}
-
-/* === TYPOGRAPHY - Hierarchy through weight, not color === */
-h1 {
-  color: var(--text-primary) !important;
-  font-size: 1.875rem !important;
-  font-weight: 700 !important;
-  margin-top: 2.5rem !important;
-  margin-bottom: 1rem !important;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border) !important;
-}
-
-h2 {
-  color: var(--text-primary) !important;
-  font-size: 1.5rem !important;
-  font-weight: 600 !important;
-  margin-top: 2rem !important;
-  margin-bottom: 0.75rem !important;
-}
-
-h3 {
-  color: var(--text-secondary) !important;
-  font-size: 1.25rem !important;
-  font-weight: 600 !important;
-  margin-top: 1.5rem !important;
-}
-
-h4, h5, h6 {
-  color: var(--text-secondary) !important;
   font-weight: 500 !important;
+  transition: all 0.2s ease !important;
 }
 
-p {
-  color: var(--text-primary) !important;
+.btn:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Main content area */
+.main-content {
+  max-width: 64rem;
+  padding: 2rem 1rem;
+  margin: 0 auto;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+}
+
+/* Typography */
+.main-content h1 {
+  color: var(--text-primary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.main-content h2 {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+}
+
+.main-content h3 {
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+}
+
+.main-content h4, 
+.main-content h5, 
+.main-content h6 {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.main-content p {
+  color: var(--text-primary);
   margin-bottom: 1rem;
 }
 
-/* === LINKS - Subtle, not distracting === */
-a {
-  color: var(--link) !important;
-  text-decoration: none !important;
-  border-bottom: 1px solid transparent;
-  transition: all 0.2s ease;
+/* Links */
+.main-content a {
+  color: var(--link);
+  text-decoration: none;
 }
 
-a:hover {
-  color: var(--link-hover) !important;
-  border-bottom-color: var(--link-hover) !important;
+.main-content a:hover {
+  color: var(--link-hover);
+  text-decoration: underline;
 }
 
-/* === CODE BLOCKS === */
-pre {
-  background: var(--bg-elevated) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-  padding: 1.25rem !important;
+/* Code blocks */
+.main-content pre {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
   overflow-x: auto;
+  font-size: 0.875rem;
 }
 
-code {
-  background: var(--bg-elevated) !important;
-  color: var(--text-primary) !important;
-  padding: 0.2rem 0.5rem !important;
-  border-radius: 4px !important;
-  font-size: 0.875em !important;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+.main-content code {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.875em;
 }
 
-pre code {
-  background: transparent !important;
-  padding: 0 !important;
+.main-content pre code {
+  background: transparent;
+  padding: 0;
 }
 
-/* === BLOCKQUOTES === */
-blockquote {
-  background: var(--bg-elevated) !important;
-  border-left: 3px solid var(--text-muted) !important;
-  border-radius: 0 6px 6px 0 !important;
-  padding: 1rem 1.5rem !important;
-  margin: 1.5rem 0 !important;
-  color: var(--text-secondary) !important;
+/* Blockquotes */
+.main-content blockquote {
+  background: var(--bg-secondary);
+  border-left: 4px solid var(--border);
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  color: var(--text-secondary);
+  border-radius: 0 6px 6px 0;
 }
 
-blockquote p {
-  margin: 0 !important;
-  color: var(--text-secondary) !important;
+.main-content blockquote > :first-child {
+  margin-top: 0;
 }
 
-/* === TABLES === */
-table {
-  width: 100% !important;
-  border-collapse: collapse !important;
-  margin: 1.5rem 0 !important;
-  background: var(--bg-surface) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-  overflow: hidden;
+.main-content blockquote > :last-child {
+  margin-bottom: 0;
 }
 
-table th {
-  background: var(--bg-elevated) !important;
-  color: var(--text-primary) !important;
-  padding: 0.75rem 1rem !important;
-  font-weight: 600 !important;
-  text-align: left !important;
-  border-bottom: 1px solid var(--border) !important;
-  font-size: 0.875rem !important;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
+/* Tables */
+.main-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
 }
 
-table td {
-  padding: 0.75rem 1rem !important;
-  border-bottom: 1px solid var(--border) !important;
-  color: var(--text-primary) !important;
+.main-content table th {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border: 1px solid var(--border);
 }
 
-table tr:last-child td {
-  border-bottom: none !important;
+.main-content table td {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
 }
 
-table tr:hover td {
-  background: var(--accent-muted) !important;
+.main-content table tr:nth-child(even) {
+  background: var(--bg-secondary);
 }
 
-/* === LISTS === */
-ul, ol {
-  margin: 1rem 0 !important;
-  padding-left: 1.5rem !important;
+/* Lists */
+.main-content ul,
+.main-content ol {
+  margin: 1rem 0;
+  padding-left: 2rem;
 }
 
-li {
-  margin-bottom: 0.5rem !important;
-  color: var(--text-primary) !important;
+.main-content li {
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
 }
 
-ul li::marker, ol li::marker {
-  color: var(--text-muted) !important;
+/* Horizontal rules */
+.main-content hr {
+  border: none;
+  height: 1px;
+  background: var(--border);
+  margin: 2rem 0;
 }
 
-/* === HORIZONTAL RULES === */
-hr {
-  border: none !important;
-  height: 1px !important;
-  background: var(--border) !important;
-  margin: 2.5rem 0 !important;
+/* Images */
+.main-content img {
+  max-width: 100%;
+  border-radius: 6px;
 }
 
-/* === SYNTAX HIGHLIGHTING - Muted, professional === */
-.highlight {
-  background: var(--bg-elevated) !important;
-}
-
+/* Syntax highlighting - muted, professional */
 .highlight .k, .highlight .kd, .highlight .kn, .highlight .kp,
 .highlight .kr, .highlight .kt, .highlight .o, .highlight .ow {
-  color: #7c3aed !important;  /* Muted purple */
+  color: #cf222e;
 }
 
 .highlight .s, .highlight .s1, .highlight .s2, .highlight .sb,
 .highlight .sc, .highlight .sd, .highlight .se, .highlight .sh,
 .highlight .si, .highlight .sx, .highlight .sr, .highlight .ss {
-  color: #0d9488 !important;  /* Muted teal */
+  color: #0a3069;
 }
 
 .highlight .c, .highlight .c1, .highlight .cm, .highlight .cp, .highlight .cs {
-  color: var(--text-muted) !important;
+  color: var(--text-muted);
 }
 
 .highlight .nf, .highlight .nc {
-  color: #2563eb !important;  /* Muted blue */
+  color: #8250df;
 }
 
 .highlight .mi, .highlight .mf {
-  color: #c2410c !important;  /* Muted orange */
+  color: #0550ae;
 }
 
-/* === FOOTER === */
-footer {
-  background: var(--bg-surface) !important;
-  border-top: 1px solid var(--border) !important;
-  margin-top: 3rem !important;
-  padding-top: 1.5rem !important;
-  color: var(--text-muted) !important;
+/* Footer */
+.site-footer {
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
 }
 
-footer a {
-  color: var(--text-secondary) !important;
+.site-footer a {
+  color: var(--text-secondary);
 }
 
-/* === MISC === */
-strong, b {
-  color: var(--text-primary) !important;
+/* Strong/emphasis */
+.main-content strong {
   font-weight: 600;
+  color: var(--text-primary);
 }
 
-em, i {
-  color: var(--text-secondary) !important;
-}
-
-::selection {
-  background: rgba(107, 114, 128, 0.2) !important;
-  color: var(--text-primary) !important;
-}
-
-/* Wrapper/container - ensure light background */
-.wrapper, .container, #main_content, main {
-  background: var(--bg-surface) !important;
-}
-
-/* Override any dark theme remnants */
-* {
-  border-color: var(--border) !important;
+.main-content em {
+  color: var(--text-secondary);
 }
