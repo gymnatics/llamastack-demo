@@ -1,10 +1,13 @@
 # GitHub Pages Configuration
 title: LlamaStack MCP Demo
-description: Building AI Agents with LlamaStack and MCP on OpenShift AI
+description: Building AI Agents with LlamaStack and MCP
 author: Danny Yeo
 show_downloads: false
 
-# Cayman theme - native light theme, clean and professional
+# Use README.md as the main page
+# GitHub Pages will automatically render README.md at the root
+
+# Cayman theme - clean and professional
 remote_theme: pages-themes/cayman@v0.2.0
 
 plugins:
