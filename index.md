@@ -322,6 +322,29 @@ kubectl apply -f deployment.yaml       # Edit image path
 > 3. Update the `image:` fields in deployment.yaml files
 > 4. Replace `Route` resources with `Ingress` for external access
 
+### 📦 About the Dockerfiles
+
+This repo includes **two Dockerfiles per component** for different platforms:
+
+| File | Base Image | Use Case |
+|------|------------|----------|
+| `Dockerfile` | `python:3.12-slim` | Kubernetes, Docker, local dev (no auth required) |
+| `Dockerfile.openshift` | `registry.redhat.io/ubi9/python-312` | OpenShift (requires Red Hat registry auth) |
+
+**If deploying manually:**
+- For **OpenShift**: The BuildConfigs automatically use `Dockerfile.openshift`
+- For **Kubernetes/Docker**: Use the default `Dockerfile` (no changes needed)
+
+```bash
+# Kubernetes/Docker - uses public Python image
+docker build -t weather-mcp-server:latest ./mcp
+docker build -t llamastack-mcp-demo:latest .
+
+# OpenShift manual build (if not using BuildConfig)
+docker build -f mcp/Dockerfile.openshift -t weather-mcp-server:latest ./mcp
+docker build -f Dockerfile.openshift -t llamastack-mcp-demo:latest .
+```
+
 ---
 
 ## 🔧 Component 1: MCP Server

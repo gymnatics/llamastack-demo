@@ -146,6 +146,24 @@ oc start-build llamastack-mcp-demo --from-dir=. --follow
 oc apply -f deployment.yaml
 ```
 
+### About the Dockerfiles
+
+This repo includes **two Dockerfiles per component**:
+
+| File | Base Image | Use Case |
+|------|------------|----------|
+| `Dockerfile` | `python:3.12-slim` | Kubernetes, Docker, local dev |
+| `Dockerfile.openshift` | `registry.redhat.io/ubi9/python-312` | OpenShift |
+
+- **OpenShift BuildConfigs** automatically use `Dockerfile.openshift`
+- **Kubernetes/Docker** deployments use the default `Dockerfile`
+
+If building manually for OpenShift without BuildConfigs:
+```bash
+docker build -f Dockerfile.openshift -t your-registry/llamastack-mcp-demo:latest .
+docker build -f mcp/Dockerfile.openshift -t your-registry/weather-mcp-server:latest ./mcp
+```
+
 ---
 
 ## Component 1: MCP Server
