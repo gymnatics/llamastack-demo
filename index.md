@@ -135,14 +135,31 @@ This guide documents how to build an AI agent that can:
 
 ## ✅ Prerequisites
 
-Before you begin, ensure you have:
+Choose your deployment path:
+
+### For OpenShift AI Users
 
 - [ ] OpenShift cluster with **OpenShift AI 3.0+** installed
 - [ ] LlamaStack operator enabled
 - [ ] `oc` CLI configured and logged in
 - [ ] Access to an LLM (vLLM, Azure OpenAI, OpenAI, etc.)
 
-### Enabling LlamaStack
+### For Open Source / Local Users
+
+- [ ] Docker and Docker Compose installed
+- [ ] LlamaStack installed (`pip install llama-stack`)
+- [ ] An LLM provider (Ollama for local, or API key for cloud providers)
+- [ ] MongoDB (can run via Docker)
+
+---
+
+## 🚀 Quick Start
+
+### Path A: OpenShift AI Deployment
+
+For enterprise users with OpenShift AI:
+
+#### Enable LlamaStack Operator
 
 ```bash
 # Check if LlamaStack CRD exists
@@ -155,11 +172,7 @@ oc patch datasciencecluster default-dsc --type merge \
 # Wait for CRD to be available (~2-3 minutes)
 ```
 
----
-
-## 🚀 Quick Start
-
-### Option 1: Automated Deployment
+#### Deploy with Script
 
 ```bash
 git clone https://github.com/gymnatics/llamastack-demo.git
@@ -167,12 +180,7 @@ cd llamastack-demo
 ./deploy.sh
 ```
 
-The script deploys:
-1. ✅ MongoDB with sample weather data
-2. ✅ Weather MCP Server
-3. ✅ Demo UI
-
-### Option 2: Manual Deployment
+#### Or Deploy Manually
 
 ```bash
 # Set namespace
@@ -195,6 +203,124 @@ oc apply -f buildconfig.yaml
 oc start-build llamastack-mcp-demo --from-dir=. --follow
 oc apply -f deployment.yaml
 ```
+
+---
+
+### Path B: Local / Open Source Deployment
+
+For developers running LlamaStack locally or on vanilla Kubernetes:
+
+#### Step 1: Start MongoDB
+
+```bash
+# Using Docker
+docker run -d --name mongodb -p 27017:27017 mongo:6.0
+
+# Load sample data
+cd llamastack-demo/mcp
+pip install pymongo
+python sample_data.py --insert --mongodb-url mongodb://localhost:27017
+```
+
+#### Step 2: Start the MCP Server
+
+```bash
+cd llamastack-demo/mcp
+pip install mcp motor uvicorn
+
+# Set environment variables
+export MONGODB_URL="mongodb://localhost:27017"
+export MCP_SERVER_NAME="weather-data"
+
+# Run the server
+python http_app.py
+# Server runs on http://localhost:8000
+```
+
+#### Step 3: Start LlamaStack with Ollama
+
+```bash
+# Install Ollama and pull a model
+ollama pull llama3.1:8b
+
+# Create a LlamaStack config file (run.yaml)
+cat > run.yaml << 'EOF'
+version: 2
+providers:
+  inference:
+  - provider_id: ollama
+    provider_type: remote::ollama
+    config:
+      url: http://localhost:11434
+  tool_runtime:
+  - provider_id: mcp
+    provider_type: remote::model-context-protocol
+    config: {}
+
+tool_groups:
+- toolgroup_id: mcp::weather
+  provider_id: mcp
+  mcp_endpoint:
+    uri: http://localhost:8000/mcp
+
+models:
+- model_id: llama3.1:8b
+  provider_id: ollama
+  provider_model_id: llama3.1:8b
+EOF
+
+# Run LlamaStack
+llama stack run run.yaml --port 8321
+```
+
+#### Step 4: Start the Demo UI
+
+```bash
+cd llamastack-demo
+pip install -r requirements.txt
+
+# Set environment variables
+export LLAMASTACK_URL="http://localhost:8321"
+export MODEL_ID="llama3.1:8b"
+export MCP_SERVER_URL="http://localhost:8000"
+
+# Run Streamlit
+streamlit run app.py
+# UI available at http://localhost:8501
+```
+
+---
+
+### Path C: Vanilla Kubernetes (kubectl)
+
+If you have a Kubernetes cluster but not OpenShift:
+
+```bash
+# All oc commands work with kubectl - just replace 'oc' with 'kubectl'
+# Exception: BuildConfigs are OpenShift-specific
+
+# For vanilla K8s, build images locally first:
+cd llamastack-demo
+
+# Build MCP server image
+docker build -t weather-mcp-server:latest ./mcp
+# Push to your registry or use local
+
+# Build Demo UI image  
+docker build -t llamastack-mcp-demo:latest .
+# Push to your registry or use local
+
+# Then apply manifests (update image references first)
+kubectl apply -f mcp/mongodb-deployment.yaml
+kubectl apply -f mcp/deployment.yaml  # Edit image path
+kubectl apply -f deployment.yaml       # Edit image path
+```
+
+> **Note**: For vanilla Kubernetes, you'll need to:
+> 1. Build Docker images locally or use a CI/CD pipeline
+> 2. Push to a container registry accessible by your cluster
+> 3. Update the `image:` fields in deployment.yaml files
+> 4. Replace `Route` resources with `Ingress` for external access
 
 ---
 
