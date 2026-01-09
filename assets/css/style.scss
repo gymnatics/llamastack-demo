@@ -4,14 +4,14 @@
 @import "jekyll-theme-hacker";
 
 /* 
- * Color Palette (Warm accent on cool dark)
- * - Background: #0d1117 (deep blue-black)
- * - Surface: #161b22 (elevated dark)
- * - Text Primary: #e6edf3 (high contrast white)
+ * Color Palette - Cyan accent on dark (Modern Tech aesthetic)
+ * - Background: #0d1117 (GitHub dark)
+ * - Surface: #161b22 (elevated)
+ * - Text Primary: #e6edf3 (crisp white)
  * - Text Secondary: #8b949e (muted)
- * - Accent Primary: #f0883e (warm orange - draws attention)
- * - Accent Secondary: #58a6ff (cool blue - links)
- * - Success: #3fb950 (green for positive)
+ * - Accent Primary: #22d3ee (cyan - modern, tech-forward)
+ * - Accent Hover: #67e8f9 (lighter cyan)
+ * - Accent Muted: rgba(34, 211, 238, 0.15)
  */
 
 :root {
@@ -20,9 +20,9 @@
   --bg-elevated: #21262d;
   --text-primary: #e6edf3;
   --text-secondary: #8b949e;
-  --accent-warm: #f0883e;
-  --accent-cool: #58a6ff;
-  --accent-success: #3fb950;
+  --accent: #22d3ee;
+  --accent-light: #67e8f9;
+  --accent-muted: rgba(34, 211, 238, 0.15);
   --border: #30363d;
 }
 
@@ -32,7 +32,7 @@ body {
   line-height: 1.7;
 }
 
-/* === HEADER - Strong visual anchor (Gestalt: Figure-Ground) === */
+/* === HEADER === */
 header {
   background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-primary) 100%) !important;
   border-bottom: 1px solid var(--border) !important;
@@ -40,14 +40,14 @@ header {
 }
 
 header h1 {
-  color: var(--accent-warm) !important;  /* Warm color draws eye first */
+  color: var(--accent) !important;
   font-size: 2.5rem !important;
   font-weight: 700 !important;
   letter-spacing: -0.5px;
 }
 
 header h1:before {
-  content: "" !important;  /* Remove ./ prefix */
+  content: "" !important;
 }
 
 header h2 {
@@ -56,7 +56,7 @@ header h2 {
   font-weight: 400 !important;
 }
 
-/* === TYPOGRAPHY HIERARCHY (Gestalt: Similarity & Hierarchy) === */
+/* === TYPOGRAPHY === */
 h1 {
   color: var(--text-primary) !important;
   font-size: 2rem !important;
@@ -64,7 +64,7 @@ h1 {
   margin-top: 2.5rem !important;
   margin-bottom: 1rem !important;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid var(--accent-warm) !important;  /* Warm accent underline */
+  border-bottom: 2px solid var(--accent) !important;
 }
 
 h2 {
@@ -76,7 +76,7 @@ h2 {
 }
 
 h3 {
-  color: var(--accent-warm) !important;  /* Warm color for tertiary headings */
+  color: var(--accent) !important;
   font-size: 1.25rem !important;
   font-weight: 600 !important;
   margin-top: 1.5rem !important;
@@ -91,23 +91,23 @@ p {
   margin-bottom: 1rem;
 }
 
-/* === LINKS - Cool accent for interactivity === */
+/* === LINKS === */
 a {
-  color: var(--accent-cool) !important;
+  color: var(--accent) !important;
   text-decoration: none !important;
   transition: color 0.2s ease;
 }
 
 a:hover {
-  color: var(--accent-warm) !important;  /* Warm on hover - rewards interaction */
+  color: var(--accent-light) !important;
   text-decoration: underline !important;
 }
 
-/* === CODE BLOCKS - Elevated surface (Gestalt: Figure-Ground) === */
+/* === CODE BLOCKS === */
 pre {
   background: var(--bg-surface) !important;
   border: 1px solid var(--border) !important;
-  border-left: 3px solid var(--accent-warm) !important;  /* Warm accent bar */
+  border-left: 3px solid var(--accent) !important;
   border-radius: 6px !important;
   padding: 1rem 1.25rem !important;
   overflow-x: auto;
@@ -115,22 +115,22 @@ pre {
 
 code {
   background: var(--bg-elevated) !important;
-  color: var(--accent-warm) !important;  /* Inline code pops with warm color */
+  color: var(--accent) !important;
   padding: 0.2rem 0.5rem !important;
   border-radius: 4px !important;
   font-size: 0.9em !important;
 }
 
 pre code {
-  color: var(--text-primary) !important;  /* Reset for code blocks */
+  color: var(--text-primary) !important;
   background: transparent !important;
   padding: 0 !important;
 }
 
-/* === BLOCKQUOTES - Call attention (Gestalt: Focal Point) === */
+/* === BLOCKQUOTES === */
 blockquote {
-  background: linear-gradient(90deg, rgba(240, 136, 62, 0.15) 0%, transparent 100%) !important;
-  border-left: 4px solid var(--accent-warm) !important;
+  background: var(--accent-muted) !important;
+  border-left: 4px solid var(--accent) !important;
   border-radius: 0 8px 8px 0 !important;
   padding: 1rem 1.5rem !important;
   margin: 1.5rem 0 !important;
@@ -141,7 +141,7 @@ blockquote p {
   margin: 0 !important;
 }
 
-/* === TABLES - Clear data presentation === */
+/* === TABLES === */
 table {
   width: 100% !important;
   border-collapse: collapse !important;
@@ -153,11 +153,11 @@ table {
 
 table th {
   background: var(--bg-elevated) !important;
-  color: var(--accent-warm) !important;  /* Warm headers */
+  color: var(--accent) !important;
   padding: 0.875rem 1rem !important;
   text-align: left !important;
   font-weight: 600 !important;
-  border-bottom: 2px solid var(--accent-warm) !important;
+  border-bottom: 2px solid var(--accent) !important;
 }
 
 table td {
@@ -167,10 +167,10 @@ table td {
 }
 
 table tr:hover td {
-  background: rgba(240, 136, 62, 0.1) !important;  /* Warm hover feedback */
+  background: var(--accent-muted) !important;
 }
 
-/* === LISTS - Better visual rhythm (Gestalt: Proximity) === */
+/* === LISTS === */
 ul, ol {
   margin: 1rem 0 !important;
   padding-left: 1.5rem !important;
@@ -182,15 +182,15 @@ li {
 }
 
 ul li::marker {
-  color: var(--accent-warm) !important;
+  color: var(--accent) !important;
 }
 
 ol li::marker {
-  color: var(--accent-warm) !important;
+  color: var(--accent) !important;
   font-weight: 600;
 }
 
-/* === HORIZONTAL RULES - Section dividers === */
+/* === HORIZONTAL RULES === */
 hr {
   border: none !important;
   height: 1px !important;
@@ -198,28 +198,28 @@ hr {
   margin: 2.5rem 0 !important;
 }
 
-/* === SYNTAX HIGHLIGHTING - Balanced colors === */
+/* === SYNTAX HIGHLIGHTING === */
 .highlight .k, .highlight .kd, .highlight .kn, .highlight .kp,
 .highlight .kr, .highlight .kt, .highlight .o, .highlight .ow {
-  color: #ff7b72 !important;  /* Keywords - coral red */
+  color: #ff7b72 !important;
 }
 
 .highlight .s, .highlight .s1, .highlight .s2, .highlight .sb,
 .highlight .sc, .highlight .sd, .highlight .se, .highlight .sh,
 .highlight .si, .highlight .sx, .highlight .sr, .highlight .ss {
-  color: #a5d6ff !important;  /* Strings - light blue */
+  color: #a5d6ff !important;
 }
 
 .highlight .c, .highlight .c1, .highlight .cm, .highlight .cp, .highlight .cs {
-  color: var(--text-secondary) !important;  /* Comments - muted */
+  color: var(--text-secondary) !important;
 }
 
 .highlight .nf, .highlight .nc {
-  color: #d2a8ff !important;  /* Functions - purple */
+  color: #d2a8ff !important;
 }
 
 .highlight .mi, .highlight .mf {
-  color: var(--accent-warm) !important;  /* Numbers - warm */
+  color: var(--accent) !important;
 }
 
 /* === FOOTER === */
@@ -230,29 +230,24 @@ footer {
 }
 
 footer a {
-  color: var(--accent-cool) !important;
+  color: var(--accent) !important;
 }
 
-/* === SPECIAL ELEMENTS === */
-
-/* Strong/Bold - slight emphasis */
+/* === MISC === */
 strong, b {
   color: var(--text-primary) !important;
   font-weight: 600;
 }
 
-/* Emphasis/Italic */
 em, i {
   color: var(--text-secondary) !important;
 }
 
-/* Selection highlight */
 ::selection {
-  background: rgba(240, 136, 62, 0.3) !important;
+  background: var(--accent-muted) !important;
   color: var(--text-primary) !important;
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
