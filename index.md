@@ -15,6 +15,7 @@ title: Building an AI Agent with LlamaStack and MCP on OpenShift AI
 
 ## 📋 Table of Contents
 
+- [Why I Built This](#-why-i-built-this)
 - [Overview](#-overview)
 - [Architecture](#-architecture)
 - [Prerequisites](#-prerequisites)
@@ -25,6 +26,49 @@ title: Building an AI Agent with LlamaStack and MCP on OpenShift AI
 - [Component 4: Demo UI](#-component-4-demo-ui)
 - [Troubleshooting](#-troubleshooting)
 - [Lessons Learned](#-lessons-learned)
+
+---
+
+## 💡 Why I Built This
+
+I created this project to solve a common challenge: **testing LlamaStack with different LLM providers through a visual interface**.
+
+### The Problem
+
+When working with LlamaStack and MCP, developers often need to:
+- Test tool-calling capabilities across different LLM providers
+- Validate MCP server integrations before production deployment
+- Demo AI agent functionality to stakeholders
+- Quickly prototype and iterate on agent workflows
+
+Setting this up from scratch every time is tedious and error-prone.
+
+### The Solution
+
+This demo provides a **ready-to-deploy testing environment** with:
+- A configurable UI that works with any LlamaStack deployment
+- A sample MCP server (weather data) to test tool calling
+- Support for multiple LLM providers out of the box
+- Clear documentation of lessons learned and gotchas
+
+### Who Is This For?
+
+| Audience | Use Case |
+|----------|----------|
+| **Enterprise Teams** | Test LlamaStack on OpenShift AI with vLLM, Azure OpenAI, or other providers |
+| **Open Source Users** | Run LlamaStack locally with Ollama or self-hosted models |
+| **Developers** | Prototype MCP integrations and test tool-calling behavior |
+| **Solution Architects** | Demo AI agent capabilities to customers |
+| **Students/Learners** | Learn how LlamaStack, MCP, and tool-calling work together |
+
+### Works With
+
+This demo is designed to work with:
+
+- **OpenShift AI** - Full enterprise deployment with LlamaStack operator
+- **Open Source LlamaStack** - Run anywhere with `llama stack run`
+- **Local Development** - Test with Ollama + local LlamaStack
+- **Cloud Providers** - Connect to Azure OpenAI, OpenAI, AWS Bedrock
 
 ---
 
