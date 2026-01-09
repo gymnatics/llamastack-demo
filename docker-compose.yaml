@@ -1,0 +1,40 @@
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  mcp-server:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    container_name: weather-mcp-server
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MCP_SERVER_NAME=weather-data
+      - DATABASE_NAME=weather
+      - COLLECTION_NAME=observations
+    depends_on:
+      - mongodb
+
+  demo-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: llamastack-demo-ui
+    ports:
+      - "8501:8501"
+    environment:
+      - LLAMASTACK_URL=${LLAMASTACK_URL:-http://host.docker.internal:8321}
+      - MODEL_ID=${MODEL_ID:-llama3.1:8b}
+      - MCP_SERVER_URL=http://mcp-server:8000
+    depends_on:
+      - mcp-server
+
+volumes:
+  mongodb_data:
