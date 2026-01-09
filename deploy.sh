@@ -390,21 +390,23 @@ COMPOSE_EOF
     print_step "Waiting for MongoDB to be ready..."
     sleep 5
 
-    # Load sample data
+    # Load sample data directly via mongosh
     print_step "Loading sample weather data..."
-    docker exec -i mongodb mongosh weather --eval "db.dropDatabase()" 2>/dev/null || true
-    
-    # Run sample data script
-    if command -v python3 &>/dev/null; then
-        cd "$SCRIPT_DIR/mcp"
-        pip install pymongo -q 2>/dev/null || true
-        python3 sample_data.py --insert --mongodb-url mongodb://localhost:27017 2>/dev/null || \
-            print_warning "Could not auto-load data. Run manually: python mcp/sample_data.py --insert"
-        cd "$SCRIPT_DIR"
-    else
-        print_warning "Python not found. Load data manually:"
-        echo "  cd mcp && python sample_data.py --insert"
-    fi
+    docker exec -i mongodb mongosh weather --eval '
+    db.observations.drop();
+    db.observations.insertMany([
+      {station_id: "KJFK", station_name: "John F. Kennedy International", location: {city: "New York", country: "USA", coordinates: {lat: 40.6413, lon: -73.7781}}, timestamp: new Date(), temperature: 22, humidity: 65, wind_speed: 15, conditions: "Partly Cloudy"},
+      {station_id: "EGLL", station_name: "London Heathrow Airport", location: {city: "London", country: "UK", coordinates: {lat: 51.4700, lon: -0.4543}}, timestamp: new Date(), temperature: 12, humidity: 78, wind_speed: 8, conditions: "Overcast"},
+      {station_id: "RJTT", station_name: "Tokyo Haneda Airport", location: {city: "Tokyo", country: "Japan", coordinates: {lat: 35.5494, lon: 139.7798}}, timestamp: new Date(), temperature: 18, humidity: 55, wind_speed: 12, conditions: "Clear"},
+      {station_id: "YSSY", station_name: "Sydney Kingsford Smith Airport", location: {city: "Sydney", country: "Australia", coordinates: {lat: -33.9399, lon: 151.1753}}, timestamp: new Date(), temperature: 28, humidity: 45, wind_speed: 20, conditions: "Sunny"},
+      {station_id: "WSSS", station_name: "Singapore Changi Airport", location: {city: "Singapore", country: "Singapore", coordinates: {lat: 1.3644, lon: 103.9915}}, timestamp: new Date(), temperature: 31, humidity: 85, wind_speed: 5, conditions: "Thunderstorms"},
+      {station_id: "VIDP", station_name: "Delhi Indira Gandhi International", location: {city: "New Delhi", country: "India", coordinates: {lat: 28.5665, lon: 77.1031}}, timestamp: new Date(), temperature: 35, humidity: 40, wind_speed: 10, conditions: "Hazy"},
+      {station_id: "OMDB", station_name: "Dubai International Airport", location: {city: "Dubai", country: "UAE", coordinates: {lat: 25.2532, lon: 55.3657}}, timestamp: new Date(), temperature: 38, humidity: 30, wind_speed: 18, conditions: "Clear"},
+      {station_id: "LFPG", station_name: "Paris Charles de Gaulle Airport", location: {city: "Paris", country: "France", coordinates: {lat: 49.0097, lon: 2.5479}}, timestamp: new Date(), temperature: 15, humidity: 70, wind_speed: 12, conditions: "Cloudy"}
+    ]);
+    print("✓ Loaded " + db.observations.countDocuments() + " weather stations");
+    ' 2>/dev/null || print_warning "Could not auto-load data"
+    print_success "Sample data loaded"
 
     echo ""
     print_header "Local Deployment Complete!"

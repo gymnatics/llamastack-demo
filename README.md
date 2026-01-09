@@ -38,9 +38,14 @@ A demonstration of LlamaStack orchestrating AI agents with Model Context Protoco
 ## 🚀 Quick Start
 
 ### Prerequisites
-- OpenShift cluster with RHOAI
-- LlamaStack already deployed
-- `oc` CLI installed and logged in
+
+Choose your platform:
+
+| Platform | Requirements |
+|----------|--------------|
+| **OpenShift** | OpenShift AI 3.0+, `oc` CLI, LlamaStack deployed |
+| **Kubernetes** | Any K8s cluster, `kubectl`, container registry |
+| **Docker** | Docker Desktop, Docker Compose |
 
 ### One-Command Deploy
 
@@ -50,10 +55,15 @@ cd llamastack-demo
 ./deploy.sh
 ```
 
-The script offers 3 options:
-1. **Complete Demo Stack** - UI + MCP + MongoDB (connects to existing LlamaStack)
-2. **MCP + MongoDB only** - Just the backend
-3. **UI only** - Just the frontend
+The script will ask you to select your platform:
+1. **OpenShift** - Uses `oc`, BuildConfigs, Routes
+2. **Kubernetes** - Uses `kubectl`, requires pre-built images
+3. **Local Docker** - Uses `docker compose`, runs everything locally
+
+Then offers deployment options:
+- **Complete Demo Stack** - UI + MCP + MongoDB
+- **MCP + MongoDB only** - Just the backend
+- **UI only** - Just the frontend
 
 ---
 
@@ -96,22 +106,30 @@ Then restart LlamaStack to load the new tools.
 
 ```
 llamastack-demo/
-├── deploy.sh               # Deployment script
-├── README.md               # This file
-├── app.py                  # Demo UI (Streamlit)
-├── Dockerfile              # Demo UI container
-├── deployment.yaml         # Demo UI manifests
-├── buildconfig.yaml        # Demo UI build config
-├── requirements.txt        # Python dependencies
-└── mcp/                    # Weather MCP Server
-    ├── http_app.py         # MCP server application
-    ├── Dockerfile          # MCP container
-    ├── deployment.yaml     # MCP manifests
-    ├── buildconfig.yaml    # MCP build config
+├── deploy.sh                 # Universal deployment script (OpenShift/K8s/Docker)
+├── README.md                 # This file
+├── docker-compose.yaml       # Docker Compose config (auto-generated)
+├── app.py                    # Demo UI (Streamlit)
+├── Dockerfile                # Demo UI - Kubernetes/Docker (python:3.12-slim)
+├── Dockerfile.openshift      # Demo UI - OpenShift (registry.redhat.io/ubi9)
+├── deployment.yaml           # Demo UI K8s manifests
+├── buildconfig.yaml          # Demo UI OpenShift build config
+├── requirements.txt          # Python dependencies
+└── mcp/                      # Weather MCP Server
+    ├── http_app.py           # MCP server application
+    ├── sample_data.py        # Sample data generator
+    ├── Dockerfile            # MCP - Kubernetes/Docker (python:3.12-slim)
+    ├── Dockerfile.openshift  # MCP - OpenShift (registry.redhat.io/ubi9)
+    ├── deployment.yaml       # MCP K8s manifests
+    ├── buildconfig.yaml      # MCP OpenShift build config
     ├── mongodb-deployment.yaml
     ├── init-data-job.yaml
     └── README.md
 ```
+
+> **Note**: Two Dockerfiles per component:
+> - `Dockerfile` - Uses public `python:3.12-slim` (no auth required)
+> - `Dockerfile.openshift` - Uses Red Hat UBI image (requires RH registry auth)
 
 ---
 
