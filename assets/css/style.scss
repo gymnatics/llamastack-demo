@@ -4,107 +4,86 @@
 @import "jekyll-theme-hacker";
 
 /* 
- * Auto Dark/Light Mode with Muted Colors
- * - Follows user's system preference (prefers-color-scheme)
- * - Muted accent colors that are easy on the eyes
- * - Soft lavender accent in dark mode
- * - Slate blue accent in light mode
+ * Light Mode Only - Clean, Professional
+ * Desaturated colors following Gestalt principles
+ * - Hierarchy through weight and size, not color intensity
+ * - Muted accent colors that don't compete for attention
+ * - High readability with proper contrast ratios
  */
 
-/* === DARK MODE (Default for Hacker theme) === */
 :root {
-  --bg-primary: #0d1117;
-  --bg-surface: #161b22;
-  --bg-elevated: #21262d;
-  --text-primary: #c9d1d9;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
-  --accent: #c4b5fd;           /* Soft lavender - easy on eyes */
-  --accent-hover: #ddd6fe;
-  --accent-muted: rgba(196, 181, 253, 0.1);
-  --border: #30363d;
-  --link: #a5b4fc;             /* Soft indigo for links */
-  --link-hover: #c7d2fe;
+  --bg-primary: #fafafa;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f3f4f6;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+  --accent: #6b7280;           /* Muted gray-blue */
+  --accent-hover: #4b5563;
+  --accent-muted: rgba(107, 114, 128, 0.08);
+  --border: #e5e7eb;
+  --link: #4f5d75;             /* Desaturated slate */
+  --link-hover: #2d3748;
 }
 
-/* === LIGHT MODE === */
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg-primary: #ffffff;
-    --bg-surface: #f6f8fa;
-    --bg-elevated: #eaeef2;
-    --text-primary: #1f2328;
-    --text-secondary: #656d76;
-    --text-muted: #8b949e;
-    --accent: #6366f1;         /* Soft indigo */
-    --accent-hover: #4f46e5;
-    --accent-muted: rgba(99, 102, 241, 0.08);
-    --border: #d0d7de;
-    --link: #5b5fc7;           /* Muted blue-purple */
-    --link-hover: #4f46e5;
-  }
-
-  body {
-    background: var(--bg-primary) !important;
-    color: var(--text-primary) !important;
-  }
-
-  header {
-    background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-primary) 100%) !important;
-  }
-
-  pre {
-    background: var(--bg-surface) !important;
-  }
-
-  table {
-    background: var(--bg-primary) !important;
-  }
-
-  table th {
-    background: var(--bg-surface) !important;
-  }
-}
-
-/* === BASE STYLES === */
+/* Force light mode background */
 body {
   background: var(--bg-primary) !important;
   color: var(--text-primary) !important;
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 /* === HEADER === */
 header {
-  background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-primary) 100%) !important;
+  background: var(--bg-surface) !important;
   border-bottom: 1px solid var(--border) !important;
-  padding-bottom: 2rem !important;
+  padding: 2rem 0 !important;
 }
 
 header h1 {
-  color: var(--accent) !important;
-  font-size: 2.5rem !important;
+  color: var(--text-primary) !important;
+  font-size: 2.25rem !important;
   font-weight: 700 !important;
   letter-spacing: -0.5px;
 }
 
-header h1:before {
-  content: "" !important;
-}
+header h1:before { content: "" !important; }
 
 header h2 {
   color: var(--text-secondary) !important;
-  font-size: 1.1rem !important;
+  font-size: 1rem !important;
   font-weight: 400 !important;
 }
 
-/* === TYPOGRAPHY === */
+/* Hide the ugly GitHub button or restyle it */
+header .btn {
+  background: var(--bg-elevated) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+  text-decoration: none !important;
+}
+
+header .btn:hover {
+  background: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+/* === MAIN CONTENT AREA === */
+section {
+  background: var(--bg-surface) !important;
+}
+
+/* === TYPOGRAPHY - Hierarchy through weight, not color === */
 h1 {
   color: var(--text-primary) !important;
-  font-size: 2rem !important;
+  font-size: 1.875rem !important;
   font-weight: 700 !important;
   margin-top: 2.5rem !important;
   margin-bottom: 1rem !important;
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border) !important;
 }
 
@@ -124,7 +103,8 @@ h3 {
 }
 
 h4, h5, h6 {
-  color: var(--text-muted) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
 }
 
 p {
@@ -132,53 +112,55 @@ p {
   margin-bottom: 1rem;
 }
 
-/* === LINKS - Muted colors === */
+/* === LINKS - Subtle, not distracting === */
 a {
   color: var(--link) !important;
   text-decoration: none !important;
-  transition: color 0.2s ease;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
 }
 
 a:hover {
   color: var(--link-hover) !important;
-  text-decoration: underline !important;
+  border-bottom-color: var(--link-hover) !important;
 }
 
 /* === CODE BLOCKS === */
 pre {
-  background: var(--bg-surface) !important;
+  background: var(--bg-elevated) !important;
   border: 1px solid var(--border) !important;
-  border-radius: 6px !important;
-  padding: 1rem 1.25rem !important;
+  border-radius: 8px !important;
+  padding: 1.25rem !important;
   overflow-x: auto;
 }
 
 code {
   background: var(--bg-elevated) !important;
-  color: var(--accent) !important;
+  color: var(--text-primary) !important;
   padding: 0.2rem 0.5rem !important;
   border-radius: 4px !important;
-  font-size: 0.9em !important;
+  font-size: 0.875em !important;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
 }
 
 pre code {
-  color: var(--text-primary) !important;
   background: transparent !important;
   padding: 0 !important;
 }
 
 /* === BLOCKQUOTES === */
 blockquote {
-  background: var(--accent-muted) !important;
-  border-left: 3px solid var(--accent) !important;
+  background: var(--bg-elevated) !important;
+  border-left: 3px solid var(--text-muted) !important;
   border-radius: 0 6px 6px 0 !important;
   padding: 1rem 1.5rem !important;
   margin: 1.5rem 0 !important;
-  color: var(--text-primary) !important;
+  color: var(--text-secondary) !important;
 }
 
 blockquote p {
   margin: 0 !important;
+  color: var(--text-secondary) !important;
 }
 
 /* === TABLES === */
@@ -187,24 +169,31 @@ table {
   border-collapse: collapse !important;
   margin: 1.5rem 0 !important;
   background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 8px !important;
   overflow: hidden;
-  border: 1px solid var(--border) !important;
 }
 
 table th {
   background: var(--bg-elevated) !important;
   color: var(--text-primary) !important;
   padding: 0.75rem 1rem !important;
-  text-align: left !important;
   font-weight: 600 !important;
+  text-align: left !important;
   border-bottom: 1px solid var(--border) !important;
+  font-size: 0.875rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
 
 table td {
   padding: 0.75rem 1rem !important;
   border-bottom: 1px solid var(--border) !important;
   color: var(--text-primary) !important;
+}
+
+table tr:last-child td {
+  border-bottom: none !important;
 }
 
 table tr:hover td {
@@ -222,11 +211,7 @@ li {
   color: var(--text-primary) !important;
 }
 
-ul li::marker {
-  color: var(--text-muted) !important;
-}
-
-ol li::marker {
+ul li::marker, ol li::marker {
   color: var(--text-muted) !important;
 }
 
@@ -238,16 +223,20 @@ hr {
   margin: 2.5rem 0 !important;
 }
 
-/* === SYNTAX HIGHLIGHTING (Muted) === */
+/* === SYNTAX HIGHLIGHTING - Muted, professional === */
+.highlight {
+  background: var(--bg-elevated) !important;
+}
+
 .highlight .k, .highlight .kd, .highlight .kn, .highlight .kp,
 .highlight .kr, .highlight .kt, .highlight .o, .highlight .ow {
-  color: #f97583 !important;
+  color: #7c3aed !important;  /* Muted purple */
 }
 
 .highlight .s, .highlight .s1, .highlight .s2, .highlight .sb,
 .highlight .sc, .highlight .sd, .highlight .se, .highlight .sh,
 .highlight .si, .highlight .sx, .highlight .sr, .highlight .ss {
-  color: #9ecbff !important;
+  color: #0d9488 !important;  /* Muted teal */
 }
 
 .highlight .c, .highlight .c1, .highlight .cm, .highlight .cp, .highlight .cs {
@@ -255,15 +244,16 @@ hr {
 }
 
 .highlight .nf, .highlight .nc {
-  color: #b392f0 !important;
+  color: #2563eb !important;  /* Muted blue */
 }
 
 .highlight .mi, .highlight .mf {
-  color: #79b8ff !important;
+  color: #c2410c !important;  /* Muted orange */
 }
 
 /* === FOOTER === */
 footer {
+  background: var(--bg-surface) !important;
   border-top: 1px solid var(--border) !important;
   margin-top: 3rem !important;
   padding-top: 1.5rem !important;
@@ -271,7 +261,7 @@ footer {
 }
 
 footer a {
-  color: var(--link) !important;
+  color: var(--text-secondary) !important;
 }
 
 /* === MISC === */
@@ -285,50 +275,16 @@ em, i {
 }
 
 ::selection {
-  background: var(--accent-muted) !important;
+  background: rgba(107, 114, 128, 0.2) !important;
   color: var(--text-primary) !important;
 }
 
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Wrapper/container - ensure light background */
+.wrapper, .container, #main_content, main {
+  background: var(--bg-surface) !important;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+/* Override any dark theme remnants */
+* {
+  border-color: var(--border) !important;
 }
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
-
-/* Light mode syntax highlighting */
-@media (prefers-color-scheme: light) {
-  .highlight .k, .highlight .kd, .highlight .kn, .highlight .kp,
-  .highlight .kr, .highlight .kt, .highlight .o, .highlight .ow {
-    color: #d73a49 !important;
-  }
-
-  .highlight .s, .highlight .s1, .highlight .s2, .highlight .sb,
-  .highlight .sc, .highlight .sd, .highlight .se, .highlight .sh,
-  .highlight .si, .highlight .sx, .highlight .sr, .highlight .ss {
-    color: #032f62 !important;
-  }
-
-  .highlight .c, .highlight .c1, .highlight .cm, .highlight .cp, .highlight .cs {
-    color: #6a737d !important;
-  }
-
-  .highlight .nf, .highlight .nc {
-    color: #6f42c1 !important;
-  }
-
-  .highlight .mi, .highlight .mf {
-    color: #005cc5 !important;
-  }
-}/* v3 - Fri Jan  9 09:39:59 +08 2026 */
