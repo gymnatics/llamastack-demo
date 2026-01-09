@@ -3,107 +3,270 @@
 
 @import "jekyll-theme-hacker";
 
-/* Override green with blue/white color scheme */
-body {
-  color: #e0e0e0;
+/* 
+ * Color Palette (Warm accent on cool dark)
+ * - Background: #0d1117 (deep blue-black)
+ * - Surface: #161b22 (elevated dark)
+ * - Text Primary: #e6edf3 (high contrast white)
+ * - Text Secondary: #8b949e (muted)
+ * - Accent Primary: #f0883e (warm orange - draws attention)
+ * - Accent Secondary: #58a6ff (cool blue - links)
+ * - Success: #3fb950 (green for positive)
+ */
+
+:root {
+  --bg-primary: #0d1117;
+  --bg-surface: #161b22;
+  --bg-elevated: #21262d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --accent-warm: #f0883e;
+  --accent-cool: #58a6ff;
+  --accent-success: #3fb950;
+  --border: #30363d;
 }
 
-/* Header - remove ./ prefix and change green to blue */
+body {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  line-height: 1.7;
+}
+
+/* === HEADER - Strong visual anchor (Gestalt: Figure-Ground) === */
+header {
+  background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-primary) 100%) !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding-bottom: 2rem !important;
+}
+
 header h1 {
-  color: #6496ff !important;
+  color: var(--accent-warm) !important;  /* Warm color draws eye first */
+  font-size: 2.5rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.5px;
 }
 
 header h1:before {
-  content: "" !important;  /* Remove the ./ prefix */
+  content: "" !important;  /* Remove ./ prefix */
 }
 
 header h2 {
-  color: #a0a0a0 !important;
+  color: var(--text-secondary) !important;
+  font-size: 1.1rem !important;
+  font-weight: 400 !important;
 }
 
-/* All headings - white/blue instead of green */
-h1, h2, h3, h4, h5, h6 {
-  color: #fff !important;
-}
-
+/* === TYPOGRAPHY HIERARCHY (Gestalt: Similarity & Hierarchy) === */
 h1 {
-  color: #6496ff !important;
+  color: var(--text-primary) !important;
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  margin-top: 2.5rem !important;
+  margin-bottom: 1rem !important;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--accent-warm) !important;  /* Warm accent underline */
 }
 
-/* Links - blue instead of green */
+h2 {
+  color: var(--text-primary) !important;
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  margin-top: 2rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+h3 {
+  color: var(--accent-warm) !important;  /* Warm color for tertiary headings */
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  margin-top: 1.5rem !important;
+}
+
+h4, h5, h6 {
+  color: var(--text-secondary) !important;
+}
+
+p {
+  color: var(--text-primary) !important;
+  margin-bottom: 1rem;
+}
+
+/* === LINKS - Cool accent for interactivity === */
 a {
-  color: #6496ff !important;
+  color: var(--accent-cool) !important;
+  text-decoration: none !important;
+  transition: color 0.2s ease;
 }
 
 a:hover {
-  color: #8ab4ff !important;
+  color: var(--accent-warm) !important;  /* Warm on hover - rewards interaction */
+  text-decoration: underline !important;
 }
 
-/* Code blocks - keep dark but remove green tint */
+/* === CODE BLOCKS - Elevated surface (Gestalt: Figure-Ground) === */
 pre {
-  background: #1a1a1a !important;
-  border: 1px solid #333 !important;
-  border-radius: 6px;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-left: 3px solid var(--accent-warm) !important;  /* Warm accent bar */
+  border-radius: 6px !important;
+  padding: 1rem 1.25rem !important;
+  overflow-x: auto;
 }
 
 code {
-  color: #e0e0e0 !important;
-  background: #1a1a1a !important;
+  background: var(--bg-elevated) !important;
+  color: var(--accent-warm) !important;  /* Inline code pops with warm color */
+  padding: 0.2rem 0.5rem !important;
+  border-radius: 4px !important;
+  font-size: 0.9em !important;
 }
 
-/* Blockquotes - blue accent instead of green */
+pre code {
+  color: var(--text-primary) !important;  /* Reset for code blocks */
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* === BLOCKQUOTES - Call attention (Gestalt: Focal Point) === */
 blockquote {
-  border-left-color: #6496ff !important;
-  background: rgba(100, 150, 255, 0.1);
-  padding: 1rem;
-  border-radius: 0 6px 6px 0;
+  background: linear-gradient(90deg, rgba(240, 136, 62, 0.15) 0%, transparent 100%) !important;
+  border-left: 4px solid var(--accent-warm) !important;
+  border-radius: 0 8px 8px 0 !important;
+  padding: 1rem 1.5rem !important;
+  margin: 1.5rem 0 !important;
+  color: var(--text-primary) !important;
 }
 
-/* Tables */
+blockquote p {
+  margin: 0 !important;
+}
+
+/* === TABLES - Clear data presentation === */
 table {
-  width: 100%;
-  border-collapse: collapse;
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 1.5rem 0 !important;
+  background: var(--bg-surface) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
 }
 
 table th {
-  background: #1a1a1a;
-  color: #fff;
-  padding: 0.75rem;
-  text-align: left;
-  border-bottom: 2px solid #6496ff;
+  background: var(--bg-elevated) !important;
+  color: var(--accent-warm) !important;  /* Warm headers */
+  padding: 0.875rem 1rem !important;
+  text-align: left !important;
+  font-weight: 600 !important;
+  border-bottom: 2px solid var(--accent-warm) !important;
 }
 
 table td {
-  padding: 0.75rem;
-  border-bottom: 1px solid #333;
+  padding: 0.75rem 1rem !important;
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
 }
 
-table tr:hover {
-  background: rgba(255, 255, 255, 0.05);
+table tr:hover td {
+  background: rgba(240, 136, 62, 0.1) !important;  /* Warm hover feedback */
 }
 
-/* Footer links */
-footer a {
-  color: #6496ff !important;
+/* === LISTS - Better visual rhythm (Gestalt: Proximity) === */
+ul, ol {
+  margin: 1rem 0 !important;
+  padding-left: 1.5rem !important;
 }
 
-/* Remove any remaining green */
-.highlight .k, .highlight .kd, .highlight .kn, .highlight .kp, 
+li {
+  margin-bottom: 0.5rem !important;
+  color: var(--text-primary) !important;
+}
+
+ul li::marker {
+  color: var(--accent-warm) !important;
+}
+
+ol li::marker {
+  color: var(--accent-warm) !important;
+  font-weight: 600;
+}
+
+/* === HORIZONTAL RULES - Section dividers === */
+hr {
+  border: none !important;
+  height: 1px !important;
+  background: linear-gradient(90deg, transparent, var(--border), transparent) !important;
+  margin: 2.5rem 0 !important;
+}
+
+/* === SYNTAX HIGHLIGHTING - Balanced colors === */
+.highlight .k, .highlight .kd, .highlight .kn, .highlight .kp,
 .highlight .kr, .highlight .kt, .highlight .o, .highlight .ow {
-  color: #6496ff !important;
+  color: #ff7b72 !important;  /* Keywords - coral red */
 }
 
 .highlight .s, .highlight .s1, .highlight .s2, .highlight .sb,
 .highlight .sc, .highlight .sd, .highlight .se, .highlight .sh,
 .highlight .si, .highlight .sx, .highlight .sr, .highlight .ss {
-  color: #f0a060 !important;  /* Orange for strings */
+  color: #a5d6ff !important;  /* Strings - light blue */
 }
 
 .highlight .c, .highlight .c1, .highlight .cm, .highlight .cp, .highlight .cs {
-  color: #888 !important;  /* Gray for comments */
+  color: var(--text-secondary) !important;  /* Comments - muted */
 }
 
-/* List markers */
-ul li:before {
-  color: #6496ff !important;
+.highlight .nf, .highlight .nc {
+  color: #d2a8ff !important;  /* Functions - purple */
+}
+
+.highlight .mi, .highlight .mf {
+  color: var(--accent-warm) !important;  /* Numbers - warm */
+}
+
+/* === FOOTER === */
+footer {
+  border-top: 1px solid var(--border) !important;
+  margin-top: 3rem !important;
+  padding-top: 1.5rem !important;
+}
+
+footer a {
+  color: var(--accent-cool) !important;
+}
+
+/* === SPECIAL ELEMENTS === */
+
+/* Strong/Bold - slight emphasis */
+strong, b {
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+/* Emphasis/Italic */
+em, i {
+  color: var(--text-secondary) !important;
+}
+
+/* Selection highlight */
+::selection {
+  background: rgba(240, 136, 62, 0.3) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
