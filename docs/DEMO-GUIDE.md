@@ -1,167 +1,108 @@
 # LlamaStack MCP Demo Guide
 
-This guide shows how to demonstrate adding and removing MCP servers from a LlamaStack distribution on OpenShift AI.
+A comprehensive guide for demonstrating LlamaStack with multiple MCP servers on OpenShift AI.
 
 ---
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
-2. [Multi-Project Demo](#multi-project-demo) ⭐ **Key Demo Feature**
-3. [Demo Flow](#demo-flow)
+1. [Demo Strategy](#demo-strategy) ⭐ **Start Here**
+2. [Pre-Demo Setup](#pre-demo-setup)
+3. [Demo Day Flow](#demo-day-flow)
 4. [Demo Scenarios](#demo-scenarios)
-5. [Manual Steps (For Demo)](#manual-steps-for-demo)
-6. [Available MCP Servers](#available-mcp-servers)
-7. [Frontend UI](#frontend-ui)
+5. [Quick Reference Commands](#quick-reference-commands)
+6. [Backup & Recovery](#backup--recovery)
+7. [Available MCP Servers](#available-mcp-servers)
 8. [YAML Reference](#yaml-reference)
 9. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Quick Start
+## Demo Strategy
 
-The `deploy.sh` script auto-detects your current namespace. Just run it!
+### Recommended Approach: **Hybrid**
 
-```bash
-# Switch to your namespace
-oc project my-demo-namespace
+| What | When | Why |
+|------|------|-----|
+| **Multi-Project Setup** | Pre-demo (day before) | Shows "end state" without waiting |
+| **Live MCP Addition** | During demo | Shows "how to do it" |
+| **Frontend Demo** | During demo | Interactive, engaging |
 
-# Deploy Phase 1 (Weather MCP only)
-./scripts/deploy.sh phase1
+### Why Hybrid?
 
-# Check status
-./scripts/deploy.sh status
+| Approach | Pros | Cons |
+|----------|------|------|
+| All Live | Shows real deployment | Risk of failures, 5-10 min waiting |
+| All Pre-setup | Fast, smooth | Doesn't show "how to do it" |
+| **Hybrid** ✅ | Best of both worlds | Requires some prep |
 
-# List available tools
-./scripts/deploy.sh tools
-```
+### Demo Timeline (~30 min)
 
-### All Commands
-
-| Command | Description |
-|---------|-------------|
-| `./scripts/deploy.sh phase1` | Deploy Weather MCP only |
-| `./scripts/deploy.sh phase2` | Deploy Weather + HR MCPs |
-| `./scripts/deploy.sh full` | Deploy all 4 MCP servers |
-| `./scripts/deploy.sh add weather` | Set to Weather only |
-| `./scripts/deploy.sh add hr` | Add HR MCP (Weather + HR) |
-| `./scripts/deploy.sh add jira` | Add Jira MCP (all MCPs) |
-| `./scripts/deploy.sh add github` | Add GitHub MCP (all MCPs) |
-| `./scripts/deploy.sh add all` | Add all 4 MCP servers |
-| `./scripts/deploy.sh reset` | Reset to Weather only |
-| `./scripts/deploy.sh status` | Show pods and routes |
-| `./scripts/deploy.sh tools` | List available tools |
-| `./scripts/deploy.sh config` | Show current MCP config |
+| Section | Duration | What to Show |
+|---------|----------|--------------|
+| Intro | 2 min | Architecture, what MCP is |
+| Live Deploy | 8 min | Add HR MCP in `my-first-model` |
+| Multi-Project | 8 min | Show team-ops, team-hr, team-dev |
+| Frontend Demo | 10 min | Interactive queries |
+| Q&A | 5 min | Questions |
 
 ---
 
-## Multi-Project Demo
+## Pre-Demo Setup
 
-> ⭐ **Key Demo Feature**: Show how different projects/teams have different LlamaStack distributions with different MCP servers attached.
+> ⏰ **Do this the day before or morning of the demo**
 
-### Concept
+### Step 1: Setup Multi-Project Demo (Pre-setup)
 
-In an enterprise, different teams need different tools:
-- **Ops Team** → Weather only (minimal)
-- **HR Team** → Weather + HR tools
-- **Dev Team** → All tools (Weather, HR, Jira, GitHub)
-
-This demo offers **two approaches**:
-
-| Approach | Description | Best For |
-|----------|-------------|----------|
-| **Option A: Config Switching** | Single namespace, switch configs | Quick demos, resource-constrained |
-| **Option B: Multi-Namespace** | Separate namespaces per team | Enterprise demos, true isolation |
-
----
-
-### Option A: Config Switching (Single Namespace)
-
-Switch LlamaStack configuration within the same namespace to simulate different team access.
+This creates team namespaces that you'll show as the "end state":
 
 ```bash
-# Show current configuration
-./scripts/deploy.sh multi status
+# Login to cluster
+oc login --token=<your-token> --server=<your-server>
 
-# Switch to Ops Team config (Weather only - 3 tools)
-./scripts/deploy.sh multi ops
-sleep 30
-./scripts/deploy.sh tools
+# Go to your project directory
+cd /Users/dayeo/LlamaStack-MCP-Demo
 
-# Switch to HR Team config (Weather + HR - 8 tools)
-./scripts/deploy.sh multi hr
-sleep 30
-./scripts/deploy.sh tools
-
-# Switch to Dev Team config (All 4 MCPs - 17 tools)
-./scripts/deploy.sh multi dev
-sleep 30
-./scripts/deploy.sh tools
-```
-
-**Pros:** Fast, simple, resource-efficient
-**Cons:** Only one config active at a time
-
----
-
-### Option B: Multi-Namespace (True Isolation)
-
-Create separate namespaces with their own LlamaStack instances.
-
-```bash
-# Setup all team namespaces (creates team-ops, team-hr, team-dev)
+# Set up team namespaces (creates team-ops, team-hr, team-dev)
 ./scripts/deploy.sh multi setup
 
 # Wait for pods to start (~60 seconds)
 sleep 60
 
-# Check status of all teams
+# Verify all running
 ./scripts/deploy.sh multi status
-```
-
-**Verify each team has different tools:**
-
-```bash
-# Check team-ops (Weather only - 3 tools)
-oc exec -n team-ops deployment/lsd-genai-playground -- \
-  curl -s http://localhost:8321/v1/tools | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print(f'team-ops: {len(d.get(\"data\",[]))} tools')"
-
-# Check team-hr (Weather + HR - 8 tools)
-oc exec -n team-hr deployment/lsd-genai-playground -- \
-  curl -s http://localhost:8321/v1/tools | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print(f'team-hr: {len(d.get(\"data\",[]))} tools')"
-
-# Check team-dev (All MCPs - 17 tools)
-oc exec -n team-dev deployment/lsd-genai-playground -- \
-  curl -s http://localhost:8321/v1/tools | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print(f'team-dev: {len(d.get(\"data\",[]))} tools')"
 ```
 
 **Expected output:**
 ```
-team-ops: 3 tools
-team-hr: 8 tools
-team-dev: 17 tools
+📁 team-ops - Ops Team - Weather only
+   MCP Servers: 1
+   Pods: 2/2 running
+
+📁 team-hr - HR Team - Weather + HR tools
+   MCP Servers: 2
+   Pods: 3/3 running
+
+📁 team-dev - Dev Team - All development tools
+   MCP Servers: 4
+   Pods: 5/5 running
 ```
 
-**Cleanup:**
-```bash
-./scripts/deploy.sh multi cleanup
-```
+### Step 2: Reset `my-first-model` to Phase 1
 
-**Pros:** True namespace isolation, side-by-side comparison, realistic enterprise setup
-**Cons:** More resources (3x LlamaStack pods), longer setup time
-
----
-
-### Demo Walkthrough (Option A - Config Switching)
-
-#### Step 1: Start with Ops Team (Minimal Tools)
+This gives you a "clean slate" for the live demo:
 
 ```bash
-./scripts/deploy.sh multi ops
-# Wait 30 seconds for restart
+# Switch to main namespace
+oc project my-first-model
+
+# Reset to Weather only (Phase 1)
+./scripts/deploy.sh reset
+
+# Wait for restart
+sleep 30
+
+# Verify - should show 3 tools
 ./scripts/deploy.sh tools
 ```
 
@@ -173,13 +114,95 @@ Total: 3 tools
   - getforecast
 ```
 
-**Demo point:** "Ops team only has access to Weather tools - minimal footprint for monitoring."
-
-#### Step 2: Switch to HR Team (Add HR Tools)
+### Step 3: Verify Frontend is Accessible
 
 ```bash
-./scripts/deploy.sh multi hr
-# Wait 30 seconds for restart
+# Get frontend URL
+oc get route -n my-first-model | grep frontend
+
+# Or get LlamaStack demo route
+oc get route llamastack-multi-mcp-demo -n my-first-model -o jsonpath='{.spec.host}'
+```
+
+Open the URL in browser and verify it loads.
+
+### Pre-Demo Checklist
+
+- [ ] Multi-project namespaces running (`./scripts/deploy.sh multi status`)
+- [ ] `my-first-model` reset to Phase 1 (3 tools)
+- [ ] Frontend UI accessible
+- [ ] Terminal ready with correct namespace (`oc project my-first-model`)
+- [ ] Demo scenarios tested
+
+---
+
+## Demo Day Flow
+
+### Part 1: Introduction (2 min)
+
+**Show the architecture diagram** (from PRD or slides):
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    OpenShift AI Cluster                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │  Frontend   │───▶│ LlamaStack  │───▶│ Llama 3.2   │         │
+│  │ (Streamlit) │    │Distribution │    │   (vLLM)    │         │
+│  └─────────────┘    └──────┬──────┘    └─────────────┘         │
+│                            │                                     │
+│              ┌─────────────┼─────────────┐                      │
+│              │             │             │                      │
+│              ▼             ▼             ▼                      │
+│  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐         │
+│  │  Weather MCP  │ │    HR MCP     │ │   Jira MCP    │         │
+│  └───────────────┘ └───────────────┘ └───────────────┘         │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key talking points:**
+- "LlamaStack is the orchestration layer between the LLM and external tools"
+- "MCP (Model Context Protocol) is how AI agents connect to external services"
+- "Each MCP server provides specific tools - Weather, HR, Jira, GitHub"
+
+---
+
+### Part 2: Live Deployment Demo (8 min)
+
+> **Namespace:** `my-first-model`
+
+**Goal:** Show the process of adding MCP servers live
+
+#### Step 1: Show Current State (1 min)
+
+```bash
+# Show current status
+./scripts/deploy.sh status
+
+# Show current tools (should be 3)
+./scripts/deploy.sh tools
+```
+
+**Say:** "Right now we only have the Weather MCP server connected. Let's add HR tools."
+
+#### Step 2: Add HR MCP Server (3 min)
+
+```bash
+# Add HR MCP
+./scripts/deploy.sh add hr
+```
+
+**While waiting (~30 seconds), explain:**
+- "The script is updating the LlamaStack ConfigMap"
+- "This is all YAML-based - no code changes needed"
+- "Admins control which tools teams can access"
+
+#### Step 3: Verify New Tools (2 min)
+
+```bash
+# Check tools now available
 ./scripts/deploy.sh tools
 ```
 
@@ -196,105 +219,128 @@ Total: 8 tools
   - create_vacation_request
 ```
 
-**Demo point:** "HR team has Weather + HR tools - they can check vacation balances and employee info."
+**Say:** "Now we have 8 tools - the original Weather tools plus 5 HR tools."
 
-#### Step 3: Switch to Dev Team (All Tools)
-
-```bash
-./scripts/deploy.sh multi dev
-# Wait 30 seconds for restart
-./scripts/deploy.sh tools
-```
-
-**Expected output:**
-```
-Total: 17 tools
-  - Weather tools (1)
-  - HR tools (5)
-  - Jira tools (5)
-  - GitHub tools (4)
-  - RAG tools (2)
-```
-
-**Demo point:** "Dev team has all tools - full development workflow with Jira and GitHub integration."
-
-#### Step 4: Show the Configuration Change
+#### Step 4: Show the Configuration Change (2 min)
 
 ```bash
+# Show what changed in the config
 ./scripts/deploy.sh config
 ```
 
-**Demo point:** "The admin changed the LlamaStack ConfigMap to add/remove MCP servers. This is how you control which tools each team can access."
-
-### Key Talking Points
-
-1. **YAML-based Control**: Admins configure MCP access via ConfigMap
-2. **Role-based Access**: Different teams get different tools
-3. **Easy to Change**: Just update the config and restart LlamaStack
-4. **Audit Trail**: All changes are in version-controlled YAML files
-5. **No Code Changes**: Users don't need to modify their applications
-6. **Namespace Isolation**: Option B provides true multi-tenancy
-
-### Quick Commands Reference
-
-```bash
-# === Option A: Config Switching ===
-./scripts/deploy.sh multi status   # Show current config
-./scripts/deploy.sh multi ops      # Ops: Weather only (3 tools)
-./scripts/deploy.sh multi hr       # HR: Weather + HR (8 tools)
-./scripts/deploy.sh multi dev      # Dev: All 4 MCPs (17 tools)
-
-# === Option B: Multi-Namespace ===
-./scripts/deploy.sh multi setup    # Create team-ops, team-hr, team-dev
-./scripts/deploy.sh multi status   # Check all teams
-./scripts/deploy.sh multi cleanup  # Remove all team namespaces
-
-# === Alternative: deploy.sh add commands ===
-./scripts/deploy.sh add weather    # Same as 'multi ops'
-./scripts/deploy.sh add hr         # Same as 'multi hr'
-./scripts/deploy.sh add all        # Same as 'multi dev'
-```
-
-### Team Configurations
-
-| Team | Namespace | MCP Servers | Tools |
-|------|-----------|-------------|-------|
-| Ops | team-ops | Weather | 3 |
-| HR | team-hr | Weather + HR | 8 |
-| Dev | team-dev | Weather + HR + Jira + GitHub | 17 |
+**Say:** "This is the ConfigMap that controls which MCP servers are connected. Admins edit this YAML to add or remove tools for their teams."
 
 ---
 
-## Demo Flow
+### Part 3: Multi-Project Demo (8 min)
 
-**Recommended demo sequence:**
+> **Namespaces:** `team-ops`, `team-hr`, `team-dev` (pre-setup)
+
+**Goal:** Show how different teams have different tool access
+
+#### Step 1: Explain the Concept (1 min)
+
+**Say:** "In an enterprise, different teams need different tools:
+- Ops team only needs monitoring tools
+- HR team needs employee management tools
+- Dev team needs everything for full workflow"
+
+#### Step 2: Show Team Status (1 min)
 
 ```bash
-# 1. Start with Weather only
-./scripts/deploy.sh phase1
-./scripts/deploy.sh tools          # Shows: 3 tools (getforecast)
-
-# 2. Add HR MCP
-./scripts/deploy.sh add hr
-sleep 30                           # Wait for restart
-./scripts/deploy.sh tools          # Shows: 10 tools (Weather + HR)
-
-# 3. Add all MCPs
-./scripts/deploy.sh add all
-sleep 30
-./scripts/deploy.sh tools          # Shows: 23 tools (all 4 MCPs)
-
-# 4. Reset back
-./scripts/deploy.sh reset
-sleep 30
-./scripts/deploy.sh tools          # Back to 3 tools
+# Show all team namespaces
+./scripts/deploy.sh multi status
 ```
+
+#### Step 3: Compare Team Tools (4 min)
+
+```bash
+# Ops Team - minimal (3 tools)
+oc project team-ops
+./scripts/deploy.sh tools
+
+# HR Team - more tools (8 tools)
+oc project team-hr
+./scripts/deploy.sh tools
+
+# Dev Team - all tools (17 tools)
+oc project team-dev
+./scripts/deploy.sh tools
+```
+
+**Say after each:**
+- **Ops:** "Ops team only has Weather tools - minimal footprint for monitoring."
+- **HR:** "HR team has Weather + HR tools - they can check vacation balances."
+- **Dev:** "Dev team has all 17 tools - full development workflow with Jira and GitHub."
+
+#### Step 4: Key Takeaways (2 min)
+
+**Say:**
+1. "Each team has their own LlamaStack distribution"
+2. "Admins control access via YAML configuration"
+3. "No code changes needed - just update the ConfigMap"
+4. "All changes are auditable and version-controlled"
+
+---
+
+### Part 4: Interactive Frontend Demo (10 min)
+
+> **Use the Frontend UI**
+
+#### Step 1: Open Frontend
+
+```bash
+# Get the frontend URL (use team-dev for all tools)
+oc project team-dev
+oc get route -n team-dev | grep frontend
+```
+
+Open the URL in browser.
+
+#### Step 2: Demo Scenarios
+
+**Scenario 1: Weather Query**
+```
+Type: "What's the weather forecast for today?"
+```
+Watch the agent use the Weather MCP.
+
+**Scenario 2: HR Self-Service**
+```
+Type: "Check the vacation balance for employee EMP001"
+```
+Watch the agent use the HR MCP.
+
+**Scenario 3: Multi-Tool Query**
+```
+Type: "List all employees in Engineering and check the weather"
+```
+Watch the agent use multiple MCPs together.
+
+#### Step 3: Show Tool Selection (2 min)
+
+In the sidebar, show:
+- The list of connected MCP servers
+- The toggle buttons to enable/disable servers
+- The auto-detected model
+
+**Say:** "Users can choose which tools they want to use. Admins control what's available, users control what they use."
+
+---
+
+### Part 5: Q&A (5 min)
+
+Common questions to prepare for:
+- "How do you add a new MCP server?" → Show the YAML config
+- "Can users add their own MCP servers?" → No, admin-only via YAML
+- "How does authentication work?" → MCP servers can require tokens
+- "What about security?" → Namespace isolation, RBAC
 
 ---
 
 ## Demo Scenarios
 
-Use these scenarios to demonstrate the AI agent capabilities:
+Use these scenarios during the interactive demo:
 
 ### Scenario 1: Weather Query
 ```
@@ -307,7 +353,7 @@ Expected: Returns weather forecast data
 ```
 User: "Check the vacation balance for employee EMP001"
 Agent: Uses HR MCP → get_vacation_balance tool
-Expected: Returns vacation days remaining
+Expected: Returns "15 vacation days remaining"
 
 User: "List all job openings"
 Agent: Uses HR MCP → list_job_openings tool
@@ -330,10 +376,6 @@ Expected: Returns relevant Confluence pages
 User: "Search for popular Kubernetes repositories"
 Agent: Uses GitHub MCP → search_repositories tool
 Expected: Returns list of repos with stars
-
-User: "List open issues in the kubernetes/kubernetes repo"
-Agent: Uses GitHub MCP → list_issues tool
-Expected: Returns recent issues
 ```
 
 ### Scenario 5: Multi-Tool Query
@@ -346,142 +388,94 @@ Expected: Returns vacation balance AND weather data
 
 ---
 
-## Manual Steps (For Demo)
+## Quick Reference Commands
 
-Use these steps when demonstrating how to manually add MCP servers via YAML.
+### Pre-Demo Setup
+```bash
+./scripts/deploy.sh multi setup    # Create team namespaces
+./scripts/deploy.sh reset          # Reset my-first-model to Phase 1
+```
 
-### Demo Scenario: Adding HR MCP Server
+### Live Demo
+```bash
+./scripts/deploy.sh status         # Show pods and routes
+./scripts/deploy.sh tools          # List available tools
+./scripts/deploy.sh add hr         # Add HR MCP
+./scripts/deploy.sh config         # Show current MCP config
+```
 
-#### Step 1: View Current Configuration
+### Multi-Project Demo
+```bash
+./scripts/deploy.sh multi status   # Show all teams
+oc project team-ops && ./scripts/deploy.sh tools   # 3 tools
+oc project team-hr && ./scripts/deploy.sh tools    # 8 tools
+oc project team-dev && ./scripts/deploy.sh tools   # 17 tools
+```
+
+### Cleanup After Demo
+```bash
+./scripts/deploy.sh multi cleanup  # Remove team namespaces
+```
+
+### All Deploy Commands
+
+| Command | Description |
+|---------|-------------|
+| `./scripts/deploy.sh phase1` | Deploy Weather MCP only |
+| `./scripts/deploy.sh phase2` | Deploy Weather + HR MCPs |
+| `./scripts/deploy.sh full` | Deploy all 4 MCP servers |
+| `./scripts/deploy.sh add weather` | Set to Weather only |
+| `./scripts/deploy.sh add hr` | Add HR MCP (Weather + HR) |
+| `./scripts/deploy.sh add jira` | Add Jira MCP (all MCPs) |
+| `./scripts/deploy.sh add github` | Add GitHub MCP (all MCPs) |
+| `./scripts/deploy.sh add all` | Add all 4 MCP servers |
+| `./scripts/deploy.sh reset` | Reset to Weather only |
+| `./scripts/deploy.sh status` | Show pods and routes |
+| `./scripts/deploy.sh tools` | List available tools |
+| `./scripts/deploy.sh config` | Show current MCP config |
+| `./scripts/deploy.sh multi setup` | Create team namespaces |
+| `./scripts/deploy.sh multi status` | Show all team status |
+| `./scripts/deploy.sh multi cleanup` | Remove team namespaces |
+
+---
+
+## Backup & Recovery
+
+### If Live Deploy Fails
+
+Fall back to pre-setup environments:
 
 ```bash
-echo "📋 Current MCP Configuration:"
-oc get configmap llama-stack-config -n my-first-model -o jsonpath='{.data.run\.yaml}' | grep -A4 "toolgroup_id: mcp::"
+# Skip to multi-project demo
+oc project team-hr
+./scripts/deploy.sh tools
 ```
 
-**Expected output (Phase 1 - Weather only):**
-```yaml
-- toolgroup_id: mcp::weather-data
-  provider_id: model-context-protocol
-  mcp_endpoint:
-    uri: http://mcp-weather.my-first-model.svc.cluster.local:80/sse
-```
+**Say:** "Let me show you what it looks like when fully configured..."
 
-#### Step 2: Check Current Tools
+### If Pod Takes Too Long
 
 ```bash
-echo "🔧 Current tools available:"
-oc exec deployment/lsd-genai-playground -n my-first-model -- \
-  curl -s http://localhost:8321/v1/tools | \
-  python3 -c "import sys,json; data=json.load(sys.stdin); tools=data.get('data',[]); print(f'Total: {len(tools)} tools'); [print(f'  - {t[\"name\"]}') for t in tools]"
-```
+# Check pod status
+oc get pods -n my-first-model | grep lsd
 
-**Expected output:**
-```
-Total: 3 tools
-  - insert_into_memory
-  - knowledge_search
-  - getforecast
-```
-
-#### Step 3: Apply Phase 2 Configuration (Weather + HR)
-
-```bash
-echo "📝 Applying Phase 2 config (Weather + HR)..."
-oc create configmap llama-stack-config \
-  --from-file=run.yaml=/Users/dayeo/LlamaStack-MCP-Demo/manifests/llamastack/llama-stack-config-phase2.yaml \
-  -n my-first-model \
-  --dry-run=client -o yaml | oc apply -f -
-```
-
-#### Step 4: Restart LlamaStack
-
-```bash
-echo "🔄 Restarting LlamaStack to pick up new config..."
+# If stuck, force restart
 oc delete pod -l app=lsd-genai-playground -n my-first-model
 ```
 
-#### Step 5: Wait for Restart
+### If Frontend Not Working
+
+Use curl to show API directly:
 
 ```bash
-echo "⏳ Waiting for LlamaStack to restart..."
-sleep 30
-oc get pods -n my-first-model | grep lsd
-```
-
-#### Step 6: Verify New Configuration
-
-```bash
-echo "✅ New MCP Configuration:"
-oc get configmap llama-stack-config -n my-first-model -o jsonpath='{.data.run\.yaml}' | grep -A4 "toolgroup_id: mcp::"
-```
-
-**Expected output (Phase 2 - Weather + HR):**
-```yaml
-- toolgroup_id: mcp::weather-data
-  provider_id: model-context-protocol
-  mcp_endpoint:
-    uri: http://mcp-weather.my-first-model.svc.cluster.local:80/sse
-- toolgroup_id: mcp::hr-tools
-  provider_id: model-context-protocol
-  mcp_endpoint:
-    uri: http://hr-mcp-server.my-first-model.svc.cluster.local:8000/mcp
-```
-
-#### Step 7: Verify New Tools
-
-```bash
-echo "🔧 Tools now available:"
+# List tools via API
 oc exec deployment/lsd-genai-playground -n my-first-model -- \
-  curl -s http://localhost:8321/v1/tools | \
-  python3 -c "
-import sys,json
-data=json.load(sys.stdin)
-tools = data.get('data', [])
-print(f'Total: {len(tools)} tools')
-print('')
-groups = {}
-for t in tools:
-    g = t.get('toolgroup_id', 'builtin')
-    if g not in groups:
-        groups[g] = []
-    groups[g].append(t['name'])
-for g, tlist in groups.items():
-    print(f'{g}:')
-    for tool in tlist:
-        print(f'  - {tool}')
-"
+  curl -s http://localhost:8321/v1/tools | python3 -m json.tool
 ```
 
-**Expected output:**
-```
-Total: 10 tools
+### If Network Issues
 
-builtin::rag:
-  - insert_into_memory
-  - knowledge_search
-mcp::weather-data:
-  - getforecast
-mcp::hr-tools:
-  - get_vacation_balance
-  - create_vacation_request
-  - get_employee_info
-  - list_employees
-  - list_job_openings
-  - get_performance_review
-  - get_vacation_requests
-```
-
-#### Step 8: Test the New HR Tools
-
-```bash
-echo "🧪 Testing HR tool: get_vacation_balance"
-oc exec deployment/lsd-genai-playground -n my-first-model -- \
-  curl -s -X POST http://localhost:8321/v1/tool-runtime/invoke \
-  -H "Content-Type: application/json" \
-  -d '{"tool_name":"get_vacation_balance","toolgroup_id":"mcp::hr-tools","kwargs":{"employee_id":"EMP001"}}' | \
-  python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('content',[{}])[0].get('text','No result'))"
-```
+Have screenshots/recordings as backup.
 
 ---
 
@@ -489,59 +483,18 @@ oc exec deployment/lsd-genai-playground -n my-first-model -- \
 
 | MCP Server | Toolgroup ID | Tools | Endpoint |
 |------------|--------------|-------|----------|
-| **Weather (Simple)** | `mcp::weather-data` | getforecast | `http://mcp-weather...svc.cluster.local:80/sse` |
-| **Weather (MongoDB)** | `mcp::weather-mongodb` | search_weather, get_current_weather, list_stations, get_statistics, health_check | `http://weather-mongodb-mcp...svc.cluster.local:8000/mcp` |
-| **HR** | `mcp::hr-tools` | get_vacation_balance, get_employee_info, list_employees, list_job_openings, create_vacation_request, get_performance_review | `http://hr-mcp-server...svc.cluster.local:8000/mcp` |
+| **Weather** | `mcp::weather-data` | getforecast | `http://mcp-weather...svc.cluster.local:80/sse` |
+| **HR** | `mcp::hr-tools` | get_vacation_balance, get_employee_info, list_employees, list_job_openings, create_vacation_request | `http://hr-mcp-server...svc.cluster.local:8000/mcp` |
 | **Jira/Confluence** | `mcp::jira-confluence` | search_issues, get_issue_details, create_issue, search_confluence, list_projects | `http://jira-mcp-server...svc.cluster.local:8000/mcp` |
 | **GitHub** | `mcp::github-tools` | search_repositories, get_repository, list_issues, search_code, get_user | `http://github-mcp-server...svc.cluster.local:8000/mcp` |
 
-### Weather MCP Options
+### Team Configurations
 
-There are two Weather MCP servers available:
-
-1. **Weather (Simple)** - OpenWeatherMap-based, single tool (`getforecast`) - **Used in this demo**
-2. **Weather (MongoDB)** - MongoDB-backed with rich data and multiple tools - Available in `mcp/weather-mongodb/`
-
----
-
-## Frontend UI
-
-The demo includes an enhanced Streamlit frontend with multi-MCP support.
-
-### Features
-- **Multi-MCP Display** - Shows all connected MCP servers
-- **Tool Discovery** - Lists all available tools grouped by server
-- **User Toggle** - Users can enable/disable MCP servers for their session
-- **Admin Mode** - Admins can add/remove MCP servers (set `ADMIN_MODE=true`)
-
-### Accessing the Frontend
-
-```bash
-# Get the frontend route
-oc get route -n my-first-model | grep frontend
-
-# Or use the LlamaStack demo route
-oc get route llamastack-multi-mcp-demo -n my-first-model
-```
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LLAMASTACK_URL` | LlamaStack service URL | Auto-detected |
-| `MODEL_ID` | Model identifier | Auto-detected from LlamaStack |
-| `ADMIN_MODE` | Enable admin features | `false` |
-
-### Model Auto-Detection
-
-The frontend automatically detects available models from LlamaStack:
-
-1. Queries `GET /v1/models` endpoint
-2. Filters for LLM models (excludes embedding models)
-3. Shows a dropdown selector with available models
-4. Falls back to text input if models can't be fetched
-
-**No configuration needed** - the model is auto-detected when the frontend starts!
+| Team | Namespace | MCP Servers | Tools |
+|------|-----------|-------------|-------|
+| Ops | team-ops | Weather | 3 |
+| HR | team-hr | Weather + HR | 8 |
+| Dev | team-dev | Weather + HR + Jira + GitHub | 17 |
 
 ---
 
@@ -550,13 +503,12 @@ The frontend automatically detects available models from LlamaStack:
 ### The File to Edit
 
 The LlamaStack configuration is stored in a ConfigMap:
+
 ```bash
 oc get configmap llama-stack-config -n my-first-model -o yaml
 ```
 
 ### The Section to Edit: `tool_groups`
-
-Add or remove entries in the `tool_groups` section:
 
 ```yaml
 tool_groups:
@@ -599,60 +551,38 @@ server:
 | File | MCP Servers | Tools |
 |------|-------------|-------|
 | `llama-stack-config-phase1.yaml` | Weather | 3 |
-| `llama-stack-config-phase2.yaml` | Weather + HR | 10 |
-| `llama-stack-config-full.yaml` | All 4 | 20+ |
+| `llama-stack-config-phase2.yaml` | Weather + HR | 8 |
+| `llama-stack-config-full.yaml` | All 4 | 17 |
 
-### Quick Switch Commands
+### Manual Config Switch (For Demo)
 
 ```bash
-# Switch to Phase 1 (Weather only)
-oc create configmap llama-stack-config \
-  --from-file=run.yaml=/Users/dayeo/LlamaStack-MCP-Demo/manifests/llamastack/llama-stack-config-phase1.yaml \
-  -n my-first-model --dry-run=client -o yaml | oc apply -f - && \
-  oc delete pod -l app=lsd-genai-playground -n my-first-model
-
 # Switch to Phase 2 (Weather + HR)
 oc create configmap llama-stack-config \
-  --from-file=run.yaml=/Users/dayeo/LlamaStack-MCP-Demo/manifests/llamastack/llama-stack-config-phase2.yaml \
-  -n my-first-model --dry-run=client -o yaml | oc apply -f - && \
-  oc delete pod -l app=lsd-genai-playground -n my-first-model
+  --from-file=run.yaml=manifests/llamastack/llama-stack-config-phase2.yaml \
+  -n my-first-model --dry-run=client -o yaml | oc apply -f -
 
-# Switch to Full (All 4 MCP servers)
-oc create configmap llama-stack-config \
-  --from-file=run.yaml=/Users/dayeo/LlamaStack-MCP-Demo/manifests/llamastack/llama-stack-config-full.yaml \
-  -n my-first-model --dry-run=client -o yaml | oc apply -f - && \
-  oc delete pod -l app=lsd-genai-playground -n my-first-model
+# Restart LlamaStack
+oc delete pod -l app=lsd-genai-playground -n my-first-model
 ```
-
----
-
-## Deploy Script Commands Summary
-
-| Command | Description |
-|---------|-------------|
-| `./scripts/deploy.sh phase1` | Deploy Weather MCP only |
-| `./scripts/deploy.sh phase2` | Deploy Weather + HR MCPs |
-| `./scripts/deploy.sh full` | Deploy all 4 MCP servers |
-| `./scripts/deploy.sh add <mcp>` | Add specific MCP (weather, hr, jira, github, all) |
-| `./scripts/deploy.sh reset` | Reset to Weather only |
-| `./scripts/deploy.sh status` | Show pods and routes |
-| `./scripts/deploy.sh tools` | List available tools |
-| `./scripts/deploy.sh config` | Show current MCP config |
 
 ---
 
 ## Troubleshooting
 
 ### LlamaStack not picking up new config
+
 ```bash
 # Force restart
 oc delete pod -l app=lsd-genai-playground -n my-first-model
+
 # Wait and check
 sleep 30
 oc get pods -n my-first-model | grep lsd
 ```
 
 ### MCP server not connecting
+
 ```bash
 # Check if MCP server pod is running
 oc get pods -n my-first-model | grep mcp
@@ -662,7 +592,43 @@ oc logs deployment/hr-mcp-server -n my-first-model --tail=20
 ```
 
 ### Tools not showing up
+
 ```bash
 # Check LlamaStack logs for errors
 oc logs deployment/lsd-genai-playground -n my-first-model --tail=50 | grep -i error
+
+# Verify config has the MCP server
+oc get configmap llama-stack-config -n my-first-model -o jsonpath='{.data.run\.yaml}' | grep -A4 "toolgroup_id: mcp::"
 ```
+
+### Pod stuck in pending/crash
+
+```bash
+# Check pod events
+oc describe pod -l app=lsd-genai-playground -n my-first-model | tail -20
+
+# Check resources
+oc get pods -n my-first-model -o wide
+```
+
+---
+
+## Summary
+
+### Before Demo
+1. ✅ Run `./scripts/deploy.sh multi setup`
+2. ✅ Run `./scripts/deploy.sh reset` in `my-first-model`
+3. ✅ Verify frontend is accessible
+4. ✅ Test demo scenarios
+
+### During Demo
+1. 🎯 Show live `add hr` deployment (8 min)
+2. 🎯 Show multi-project comparison (8 min)
+3. 🎯 Interactive frontend demo (10 min)
+
+### Key Messages
+- **YAML-based control** - Admins configure via ConfigMap
+- **Role-based access** - Different teams get different tools
+- **Easy to change** - Just update config and restart
+- **Auditable** - All changes in version-controlled YAML
+- **No code changes** - Users don't modify applications
