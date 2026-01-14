@@ -1,5 +1,8 @@
-# LlamaStack Demo UI - OpenShift Version
+# LlamaStack Multi-MCP Demo UI - OpenShift Version
 # Uses Red Hat UBI image for OpenShift compatibility
+#
+# Build with OpenShift BuildConfig or:
+#   docker build -f Dockerfile.openshift -t llamastack-demo-ui .
 
 FROM registry.redhat.io/ubi9/python-312:latest
 
@@ -9,14 +12,19 @@ WORKDIR /opt/app-root/src
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app
-COPY app.py .
+# Copy app from new location
+COPY manifests/frontend/app.py .
 
 # Make directory writable for OpenShift's arbitrary UID
 USER 0
 RUN chmod -R g+rwX /opt/app-root/src && \
     chgrp -R 0 /opt/app-root/src
 USER 1001
+
+# Environment variables
+ENV LLAMASTACK_URL="http://localhost:8321" \
+    MODEL_ID="qwen3-4b" \
+    ADMIN_MODE="false"
 
 EXPOSE 8501
 
