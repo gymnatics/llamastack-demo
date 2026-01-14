@@ -20,9 +20,11 @@ A comprehensive demonstration of LlamaStack with multiple Model Context Protocol
 
 ### Prerequisites
 - OpenShift cluster with OpenShift AI
-- `oc` CLI logged in
+- `oc` CLI installed and logged in
 - LlamaStack distribution deployed
 - Model serving endpoint (vLLM)
+
+> **Note:** This demo is optimized for OpenShift. The deploy script uses `oc` commands and OpenShift-specific resources (Routes, BuildConfigs).
 
 ### Deploy Demo
 
