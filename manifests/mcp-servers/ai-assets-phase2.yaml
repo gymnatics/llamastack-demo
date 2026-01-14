@@ -1,0 +1,26 @@
+# Phase 2: AI Assets ConfigMap with 2 MCP Servers (Weather + HR)
+# This adds the HR MCP server to the AI Assets
+#
+# To apply:
+#   oc apply -f ai-assets-phase2.yaml
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+data:
+  Weather-MCP-Server: |
+    {
+      "url": "http://mcp-weather.my-first-model.svc.cluster.local:80/sse",
+      "description": "Weather data MCP server providing real-time weather information via OpenWeatherMap API. Tools: getforecast, get_current_weather.",
+      "transport": "sse"
+    }
+  HR-MCP-Server: |
+    {
+      "url": "https://hr-mcp-server-my-first-model.apps.ocp.f68xw.sandbox580.opentlc.com/mcp",
+      "description": "HR system integration for employee information, vacation balance checking, leave requests, job openings, and performance reviews. Tools: get_vacation_balance, create_vacation_request, get_employee_info, list_employees, list_job_openings, get_performance_review.",
+      "transport": "streamableHttp"
+    }

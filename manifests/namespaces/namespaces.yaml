@@ -1,0 +1,39 @@
+# Namespaces for LlamaStack MCP Demo Phases
+# Each phase has its own namespace and LlamaStack distribution
+#
+# To apply:
+#   oc apply -f namespaces.yaml
+#
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llamastack-phase1
+  labels:
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+    demo-phase: "1"
+  annotations:
+    openshift.io/description: "Phase 1: LlamaStack with Weather MCP only"
+    openshift.io/display-name: "LlamaStack Demo - Phase 1 (Weather)"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llamastack-phase2
+  labels:
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+    demo-phase: "2"
+  annotations:
+    openshift.io/description: "Phase 2: LlamaStack with Weather + HR MCP"
+    openshift.io/display-name: "LlamaStack Demo - Phase 2 (Weather + HR)"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llamastack-full
+  labels:
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+    demo-phase: "full"
+  annotations:
+    openshift.io/description: "Full: LlamaStack with all 4 MCP servers"
+    openshift.io/display-name: "LlamaStack Demo - Full (All MCPs)"

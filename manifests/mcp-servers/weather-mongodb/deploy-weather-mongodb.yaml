@@ -1,0 +1,407 @@
+# MongoDB-based Weather MCP Server
+# A sophisticated weather data MCP server backed by MongoDB
+#
+# Features:
+# - Real weather data storage in MongoDB
+# - Advanced search with filters (station, location, temperature, conditions)
+# - Statistics and health check tools
+#
+# To deploy:
+#   oc apply -f deploy-weather-mongodb.yaml -n <namespace>
+#
+# Tools provided:
+# - search_weather: Search with multiple filters
+# - get_current_weather: Get latest observation for a station
+# - list_stations: List all available stations
+# - get_statistics: Database statistics
+# - health_check: Server health status
+#
+---
+# MongoDB Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  labels:
+    app: mongodb
+    app.kubernetes.io/part-of: weather-mcp-mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: docker.io/library/mongo:6.0
+        ports:
+        - containerPort: 27017
+        env:
+        - name: MONGO_INITDB_DATABASE
+          value: weather
+        volumeMounts:
+        - name: mongodb-data
+          mountPath: /data/db
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: mongodb-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  labels:
+    app: mongodb
+spec:
+  selector:
+    app: mongodb
+  ports:
+  - port: 27017
+    targetPort: 27017
+---
+# Sample Data Initialization Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-weather-data
+  labels:
+    app: init-weather-data
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: init-data
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          pip install pymongo
+          python << 'EOF'
+          from pymongo import MongoClient
+          from datetime import datetime, timedelta
+          import random
+
+          # Sample weather stations
+          STATIONS = [
+              {"code": "VIDP", "name": "Indira Gandhi International", "city": "New Delhi", "country": "India"},
+              {"code": "VABB", "name": "Chhatrapati Shivaji", "city": "Mumbai", "country": "India"},
+              {"code": "WSSS", "name": "Changi Airport", "city": "Singapore", "country": "Singapore"},
+              {"code": "VHHH", "name": "Hong Kong International", "city": "Hong Kong", "country": "China"},
+              {"code": "RJTT", "name": "Tokyo Haneda", "city": "Tokyo", "country": "Japan"},
+              {"code": "EGLL", "name": "Heathrow", "city": "London", "country": "UK"},
+              {"code": "LFPG", "name": "Charles de Gaulle", "city": "Paris", "country": "France"},
+              {"code": "KJFK", "name": "John F Kennedy", "city": "New York", "country": "USA"},
+              {"code": "KLAX", "name": "Los Angeles International", "city": "Los Angeles", "country": "USA"},
+              {"code": "OMDB", "name": "Dubai International", "city": "Dubai", "country": "UAE"},
+              {"code": "YSSY", "name": "Sydney Airport", "city": "Sydney", "country": "Australia"},
+          ]
+
+          CONDITIONS = ["Clear", "Partly Cloudy", "Cloudy", "Light Rain", "Rain", "Fog", "Haze", "Thunderstorm"]
+
+          client = MongoClient("mongodb://mongodb:27017")
+          db = client.weather
+          collection = db.observations
+
+          # Clear existing data
+          collection.delete_many({})
+
+          # Generate sample data
+          observations = []
+          now = datetime.utcnow()
+
+          for station in STATIONS:
+              for hours_ago in range(0, 48, 3):  # Last 48 hours, every 3 hours
+                  timestamp = now - timedelta(hours=hours_ago)
+                  base_temp = random.uniform(15, 35)
+                  
+                  obs = {
+                      "station": station["code"],
+                      "station_name": station["name"],
+                      "city": station["city"],
+                      "country": station["country"],
+                      "timestamp": timestamp,
+                      "temperature": round(base_temp + random.uniform(-5, 5), 1),
+                      "dewpoint": round(base_temp - random.uniform(5, 15), 1),
+                      "humidity": random.randint(40, 95),
+                      "wind_speed": random.randint(0, 30),
+                      "wind_direction": random.randint(0, 360),
+                      "visibility": random.randint(1000, 10000),
+                      "pressure": random.randint(1000, 1030),
+                      "conditions": random.choice(CONDITIONS),
+                      "clouds": random.choice(["FEW", "SCT", "BKN", "OVC", "CLR"])
+                  }
+                  observations.append(obs)
+
+          collection.insert_many(observations)
+          print(f"✅ Inserted {len(observations)} weather observations")
+          print(f"   Stations: {len(STATIONS)}")
+          print(f"   Time range: Last 48 hours")
+          EOF
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+---
+# Weather MCP Server ConfigMap (Code)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: weather-mongodb-mcp-code
+  labels:
+    app: weather-mongodb-mcp
+data:
+  http_app.py: |
+    """
+    Weather Data MCP Server - MongoDB Backend
+    """
+    from typing import Dict
+    import asyncio
+    from datetime import datetime, timedelta
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+    from motor.motor_asyncio import AsyncIOMotorClient
+    import os
+
+    SERVER_NAME = os.getenv("MCP_SERVER_NAME", "weather-mongodb")
+    MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://mongodb:27017")
+    DATABASE_NAME = os.getenv("DATABASE_NAME", "weather")
+    COLLECTION_NAME = os.getenv("COLLECTION_NAME", "observations")
+
+    transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    mcp = FastMCP(SERVER_NAME, transport_security=transport_security)
+
+    client = None
+    db = None
+
+    async def get_mongodb_client():
+        global client, db
+        if client is None:
+            client = AsyncIOMotorClient(MONGODB_URL)
+            db = client[DATABASE_NAME]
+        return client, db
+
+    def format_weather(doc: Dict) -> str:
+        result = f"📍 Station: {doc.get('station', 'Unknown')}"
+        if doc.get('station_name'):
+            result += f" ({doc['station_name']})"
+        result += f"\n🕐 Time: {doc.get('timestamp', 'Unknown')}\n"
+        result += f"🌡️ Temperature: {doc.get('temperature', 'N/A')}°C\n"
+        result += f"💧 Humidity: {doc.get('humidity', 'N/A')}%\n"
+        result += f"💨 Wind: {doc.get('wind_speed', 'N/A')} km/h from {doc.get('wind_direction', 'N/A')}°\n"
+        result += f"👁️ Visibility: {doc.get('visibility', 'N/A')}m\n"
+        result += f"🌤️ Conditions: {doc.get('conditions', 'N/A')}\n"
+        return result
+
+    @mcp.tool()
+    async def search_weather(
+        station: str = None,
+        location: str = None,
+        min_temperature: float = None,
+        max_temperature: float = None,
+        conditions: str = None,
+        limit: int = 10
+    ) -> str:
+        """Search for weather observations with optional filters."""
+        try:
+            _, db = await get_mongodb_client()
+            query = {}
+            
+            if station:
+                query["station"] = station.upper()
+            if location:
+                query["$or"] = [
+                    {"city": {"$regex": location, "$options": "i"}},
+                    {"station_name": {"$regex": location, "$options": "i"}}
+                ]
+            if min_temperature is not None:
+                query["temperature"] = {"$gte": min_temperature}
+            if max_temperature is not None:
+                query.setdefault("temperature", {})["$lte"] = max_temperature
+            if conditions:
+                query["conditions"] = {"$regex": conditions, "$options": "i"}
+            
+            cursor = db[COLLECTION_NAME].find(query).sort("timestamp", -1).limit(min(limit, 50))
+            results = await cursor.to_list(length=limit)
+            
+            if not results:
+                return "❌ No weather data found matching your criteria"
+            
+            output = f"🔍 Found {len(results)} observations:\n\n"
+            for doc in results:
+                output += format_weather(doc) + "\n"
+            return output
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
+
+    @mcp.tool()
+    async def get_current_weather(station: str) -> str:
+        """Get the most recent weather observation for a station."""
+        try:
+            _, db = await get_mongodb_client()
+            doc = await db[COLLECTION_NAME].find_one(
+                {"station": station.upper()},
+                sort=[("timestamp", -1)]
+            )
+            if not doc:
+                return f"❌ No data found for station: {station}"
+            return f"🌤️ Current Weather at {station.upper()}\n{'='*40}\n\n{format_weather(doc)}"
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
+
+    @mcp.tool()
+    async def list_stations() -> str:
+        """List all available weather stations."""
+        try:
+            _, db = await get_mongodb_client()
+            stations = await db[COLLECTION_NAME].distinct("station")
+            count = await db[COLLECTION_NAME].count_documents({})
+            result = f"📡 Available Stations ({len(stations)} stations, {count} observations)\n\n"
+            for s in sorted(stations):
+                result += f"  • {s}\n"
+            return result
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
+
+    @mcp.tool()
+    async def get_statistics() -> str:
+        """Get weather database statistics."""
+        try:
+            _, db = await get_mongodb_client()
+            count = await db[COLLECTION_NAME].count_documents({})
+            stations = await db[COLLECTION_NAME].distinct("station")
+            earliest = await db[COLLECTION_NAME].find_one({}, sort=[("timestamp", 1)])
+            latest = await db[COLLECTION_NAME].find_one({}, sort=[("timestamp", -1)])
+            
+            return f"""📊 Weather Database Statistics
+    {'='*40}
+    📈 Total Observations: {count:,}
+    📡 Unique Stations: {len(stations)}
+    📅 Earliest: {earliest.get('timestamp') if earliest else 'N/A'}
+    📅 Latest: {latest.get('timestamp') if latest else 'N/A'}
+    """
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
+
+    @mcp.tool()
+    async def health_check() -> str:
+        """Check server and database health."""
+        try:
+            _, db = await get_mongodb_client()
+            await db.command('ping')
+            count = await db[COLLECTION_NAME].count_documents({})
+            return f"✅ Healthy - MongoDB connected, {count:,} documents"
+        except Exception as e:
+            return f"❌ Unhealthy - {str(e)}"
+
+    if __name__ == "__main__":
+        import uvicorn
+        print(f"🚀 Starting Weather MCP Server (MongoDB)")
+        print(f"   MongoDB: {MONGODB_URL}")
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host='0.0.0.0', port=8000)
+---
+# Weather MCP Server Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-mongodb-mcp
+  labels:
+    app: weather-mongodb-mcp
+    app.kubernetes.io/part-of: weather-mcp-mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: weather-mongodb-mcp
+  template:
+    metadata:
+      labels:
+        app: weather-mongodb-mcp
+    spec:
+      containers:
+      - name: mcp-server
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          export HOME=/tmp
+          pip install --user mcp uvicorn motor
+          export PATH=/tmp/.local/bin:$PATH
+          python /app/http_app.py
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: MONGODB_URL
+          value: "mongodb://mongodb:27017"
+        - name: MCP_SERVER_NAME
+          value: "weather-mongodb"
+        volumeMounts:
+        - name: code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 90
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+      volumes:
+      - name: code
+        configMap:
+          name: weather-mongodb-mcp-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weather-mongodb-mcp
+  labels:
+    app: weather-mongodb-mcp
+spec:
+  selector:
+    app: weather-mongodb-mcp
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: weather-mongodb-mcp
+  labels:
+    app: weather-mongodb-mcp
+spec:
+  to:
+    kind: Service
+    name: weather-mongodb-mcp
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

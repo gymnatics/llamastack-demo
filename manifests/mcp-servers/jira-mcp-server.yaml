@@ -1,0 +1,729 @@
+# Jira/Confluence MCP Server - Project Management Integration
+# Mock implementation for demo purposes - no external Jira/Confluence required
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jira-mcp-data
+  namespace: my-first-model
+  labels:
+    app: jira-mcp-server
+    app.kubernetes.io/name: jira-mcp-server
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+data:
+  mock_data.json: |
+    {
+      "projects": [
+        {
+          "key": "PLAT",
+          "name": "Platform Engineering",
+          "description": "Core platform infrastructure and services",
+          "lead": "Frank Chen"
+        },
+        {
+          "key": "PROD",
+          "name": "Product Development",
+          "description": "Customer-facing product features",
+          "lead": "Grace Lee"
+        },
+        {
+          "key": "DEVX",
+          "name": "Developer Experience",
+          "description": "Internal developer tools and productivity",
+          "lead": "Alice Johnson"
+        }
+      ],
+      "issues": [
+        {
+          "key": "PLAT-101",
+          "summary": "Implement OAuth2 authentication for API gateway",
+          "description": "Add OAuth2 support to the API gateway for secure third-party integrations",
+          "type": "Story",
+          "status": "In Progress",
+          "priority": "High",
+          "assignee": "Bob Smith",
+          "reporter": "Frank Chen",
+          "created": "2026-01-08",
+          "updated": "2026-01-13",
+          "labels": ["security", "api", "authentication"],
+          "story_points": 8
+        },
+        {
+          "key": "PLAT-102",
+          "summary": "Upgrade Kubernetes cluster to 1.29",
+          "description": "Plan and execute Kubernetes upgrade from 1.28 to 1.29",
+          "type": "Task",
+          "status": "To Do",
+          "priority": "Medium",
+          "assignee": "Bob Smith",
+          "reporter": "Frank Chen",
+          "created": "2026-01-10",
+          "updated": "2026-01-10",
+          "labels": ["infrastructure", "kubernetes", "upgrade"],
+          "story_points": 13
+        },
+        {
+          "key": "PLAT-103",
+          "summary": "Fix memory leak in caching service",
+          "description": "Investigate and fix memory leak causing OOM kills in production",
+          "type": "Bug",
+          "status": "In Review",
+          "priority": "Critical",
+          "assignee": "Alice Johnson",
+          "reporter": "David Brown",
+          "created": "2026-01-12",
+          "updated": "2026-01-14",
+          "labels": ["bug", "production", "urgent"],
+          "story_points": 5
+        },
+        {
+          "key": "PROD-201",
+          "summary": "Add dark mode support to dashboard",
+          "description": "Implement dark mode theme for the main dashboard",
+          "type": "Story",
+          "status": "Done",
+          "priority": "Medium",
+          "assignee": "David Brown",
+          "reporter": "Carol Williams",
+          "created": "2026-01-05",
+          "updated": "2026-01-12",
+          "labels": ["ui", "feature", "accessibility"],
+          "story_points": 5
+        },
+        {
+          "key": "PROD-202",
+          "summary": "Implement real-time notifications",
+          "description": "Add WebSocket-based real-time notifications for user events",
+          "type": "Story",
+          "status": "In Progress",
+          "priority": "High",
+          "assignee": "Alice Johnson",
+          "reporter": "Carol Williams",
+          "created": "2026-01-09",
+          "updated": "2026-01-14",
+          "labels": ["feature", "websocket", "notifications"],
+          "story_points": 13
+        },
+        {
+          "key": "DEVX-301",
+          "summary": "Create CI/CD pipeline template",
+          "description": "Develop reusable CI/CD pipeline templates for new services",
+          "type": "Task",
+          "status": "To Do",
+          "priority": "Medium",
+          "assignee": "Bob Smith",
+          "reporter": "Alice Johnson",
+          "created": "2026-01-11",
+          "updated": "2026-01-11",
+          "labels": ["devops", "ci-cd", "templates"],
+          "story_points": 8
+        },
+        {
+          "key": "DEVX-302",
+          "summary": "Document API versioning strategy",
+          "description": "Write comprehensive documentation for API versioning approach",
+          "type": "Task",
+          "status": "In Progress",
+          "priority": "Low",
+          "assignee": "David Brown",
+          "reporter": "Alice Johnson",
+          "created": "2026-01-13",
+          "updated": "2026-01-14",
+          "labels": ["documentation", "api", "standards"],
+          "story_points": 3
+        }
+      ],
+      "confluence_pages": [
+        {
+          "id": "DOC-001",
+          "title": "Platform Architecture Overview",
+          "space": "PLAT",
+          "content": "This document describes the overall architecture of our platform. The platform consists of microservices deployed on Kubernetes, with an API gateway handling external traffic. Key components include: Authentication Service, User Management, Data Processing Pipeline, and Notification Service. All services communicate via gRPC internally and expose REST APIs externally.",
+          "author": "Frank Chen",
+          "created": "2025-06-15",
+          "updated": "2026-01-10",
+          "labels": ["architecture", "overview", "platform"]
+        },
+        {
+          "id": "DOC-002",
+          "title": "API Authentication Guide",
+          "space": "PLAT",
+          "content": "This guide covers authentication methods for our APIs. We support three authentication methods: 1) API Keys for service-to-service communication, 2) OAuth2 for third-party integrations, 3) JWT tokens for user authentication. All API requests must include authentication headers. Rate limiting is applied based on authentication type.",
+          "author": "Alice Johnson",
+          "created": "2025-08-20",
+          "updated": "2026-01-08",
+          "labels": ["api", "authentication", "security", "guide"]
+        },
+        {
+          "id": "DOC-003",
+          "title": "Onboarding Guide for New Developers",
+          "space": "DEVX",
+          "content": "Welcome to the team! This guide will help you get started. Step 1: Set up your development environment using our setup script. Step 2: Clone the main repositories. Step 3: Run the local development stack using Docker Compose. Step 4: Complete the security training. Step 5: Join the relevant Slack channels. Contact your buddy if you have questions.",
+          "author": "Alice Johnson",
+          "created": "2025-03-01",
+          "updated": "2025-12-15",
+          "labels": ["onboarding", "getting-started", "new-hire"]
+        },
+        {
+          "id": "DOC-004",
+          "title": "Incident Response Playbook",
+          "space": "PLAT",
+          "content": "This playbook outlines our incident response procedures. Severity Levels: P1 (Critical) - Complete service outage, P2 (High) - Major feature unavailable, P3 (Medium) - Degraded performance, P4 (Low) - Minor issues. For P1/P2 incidents: 1) Page on-call engineer, 2) Create incident channel, 3) Assess impact, 4) Implement fix, 5) Post-mortem within 48 hours.",
+          "author": "Bob Smith",
+          "created": "2025-09-10",
+          "updated": "2026-01-05",
+          "labels": ["incident", "playbook", "operations", "sre"]
+        },
+        {
+          "id": "DOC-005",
+          "title": "Product Roadmap Q1 2026",
+          "space": "PROD",
+          "content": "Q1 2026 Product Roadmap. Key initiatives: 1) Real-time notifications (January), 2) Advanced analytics dashboard (February), 3) Mobile app v2.0 (March). Dependencies: Platform team for WebSocket infrastructure, Data team for analytics pipeline. Success metrics: 20% increase in user engagement, 15% reduction in support tickets.",
+          "author": "Carol Williams",
+          "created": "2025-12-20",
+          "updated": "2026-01-02",
+          "labels": ["roadmap", "planning", "q1-2026"]
+        }
+      ],
+      "sprints": [
+        {
+          "id": 1,
+          "name": "Sprint 2026-01",
+          "project": "PLAT",
+          "start_date": "2026-01-06",
+          "end_date": "2026-01-19",
+          "status": "active",
+          "goal": "Complete OAuth2 implementation and fix critical bugs"
+        },
+        {
+          "id": 2,
+          "name": "Sprint 2026-01",
+          "project": "PROD",
+          "start_date": "2026-01-06",
+          "end_date": "2026-01-19",
+          "status": "active",
+          "goal": "Launch real-time notifications MVP"
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jira-mcp-server-code
+  namespace: my-first-model
+  labels:
+    app: jira-mcp-server
+data:
+  server.py: |
+    """
+    Jira/Confluence MCP Server - Project Management Integration
+    Provides tools for issue tracking and documentation search
+    """
+    from typing import Any, Dict, List, Optional
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+    import json
+    import os
+    from datetime import datetime
+
+    # Configuration
+    SERVER_NAME = os.getenv("MCP_SERVER_NAME", "jira-confluence")
+
+    # Disable DNS rebinding protection for Kubernetes
+    transport_security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=False
+    )
+
+    # Initialize FastMCP server
+    mcp = FastMCP(SERVER_NAME, transport_security=transport_security)
+
+    # Load mock data
+    with open('/data/mock_data.json') as f:
+        data = json.load(f)
+
+    projects = {p['key']: p for p in data['projects']}
+    issues = data['issues']
+    confluence_pages = data['confluence_pages']
+    sprints = data['sprints']
+
+    # Track created issues for demo
+    created_issues = []
+
+    @mcp.tool()
+    async def search_issues(
+        query: str = None,
+        project: str = None,
+        status: str = None,
+        assignee: str = None,
+        priority: str = None,
+        issue_type: str = None,
+        labels: str = None
+    ) -> str:
+        """Search for Jira issues with various filters.
+        
+        Args:
+            query: Text search in summary and description
+            project: Project key (PLAT, PROD, DEVX)
+            status: Issue status (To Do, In Progress, In Review, Done)
+            assignee: Assignee name
+            priority: Priority level (Critical, High, Medium, Low)
+            issue_type: Issue type (Story, Task, Bug)
+            labels: Comma-separated labels to filter by
+        
+        Returns:
+            List of matching issues
+        """
+        results = issues + created_issues
+        
+        if project:
+            results = [i for i in results if i['key'].startswith(project.upper())]
+        
+        if status:
+            results = [i for i in results if i['status'].lower() == status.lower()]
+        
+        if assignee:
+            results = [i for i in results if assignee.lower() in i['assignee'].lower()]
+        
+        if priority:
+            results = [i for i in results if i['priority'].lower() == priority.lower()]
+        
+        if issue_type:
+            results = [i for i in results if i['type'].lower() == issue_type.lower()]
+        
+        if labels:
+            label_list = [l.strip().lower() for l in labels.split(',')]
+            results = [i for i in results if any(l in [x.lower() for x in i['labels']] for l in label_list)]
+        
+        if query:
+            query_lower = query.lower()
+            results = [i for i in results if 
+                      query_lower in i['summary'].lower() or 
+                      query_lower in i['description'].lower()]
+        
+        if not results:
+            return "🔍 No issues found matching your criteria."
+        
+        output = f"🎫 Jira Issues ({len(results)} found)\n"
+        output += "═══════════════════════════════════════\n\n"
+        
+        priority_emoji = {"Critical": "🔴", "High": "🟠", "Medium": "🟡", "Low": "🟢"}
+        status_emoji = {"To Do": "📋", "In Progress": "🔄", "In Review": "👀", "Done": "✅"}
+        type_emoji = {"Story": "📖", "Task": "✔️", "Bug": "🐛"}
+        
+        for issue in results:
+            p_emoji = priority_emoji.get(issue['priority'], "⚪")
+            s_emoji = status_emoji.get(issue['status'], "❓")
+            t_emoji = type_emoji.get(issue['type'], "📌")
+            
+            output += f"{t_emoji} [{issue['key']}] {issue['summary']}\n"
+            output += f"   {p_emoji} {issue['priority']} | {s_emoji} {issue['status']}\n"
+            output += f"   👤 {issue['assignee']} | 📊 {issue.get('story_points', 'N/A')} pts\n"
+            output += f"   🏷️ {', '.join(issue['labels'])}\n\n"
+        
+        return output
+
+    @mcp.tool()
+    async def get_issue_details(issue_key: str) -> str:
+        """Get detailed information about a specific Jira issue.
+        
+        Args:
+            issue_key: The issue key (e.g., PLAT-101)
+        
+        Returns:
+            Detailed issue information
+        """
+        all_issues = issues + created_issues
+        issue = next((i for i in all_issues if i['key'].upper() == issue_key.upper()), None)
+        
+        if not issue:
+            return f"❌ Issue {issue_key} not found."
+        
+        priority_emoji = {"Critical": "🔴", "High": "🟠", "Medium": "🟡", "Low": "🟢"}
+        status_emoji = {"To Do": "📋", "In Progress": "🔄", "In Review": "👀", "Done": "✅"}
+        type_emoji = {"Story": "📖", "Task": "✔️", "Bug": "🐛"}
+        
+        p_emoji = priority_emoji.get(issue['priority'], "⚪")
+        s_emoji = status_emoji.get(issue['status'], "❓")
+        t_emoji = type_emoji.get(issue['type'], "📌")
+        
+        return f"""{t_emoji} {issue['key']}: {issue['summary']}
+    ═══════════════════════════════════════
+    
+    📝 Description:
+    {issue['description']}
+    
+    📊 Details:
+    • Type: {issue['type']}
+    • Status: {s_emoji} {issue['status']}
+    • Priority: {p_emoji} {issue['priority']}
+    • Story Points: {issue.get('story_points', 'N/A')}
+    
+    👥 People:
+    • Assignee: {issue['assignee']}
+    • Reporter: {issue['reporter']}
+    
+    📅 Dates:
+    • Created: {issue['created']}
+    • Updated: {issue['updated']}
+    
+    🏷️ Labels: {', '.join(issue['labels'])}
+    """
+
+    @mcp.tool()
+    async def create_issue(
+        project: str,
+        summary: str,
+        description: str,
+        issue_type: str = "Task",
+        priority: str = "Medium",
+        assignee: str = None,
+        labels: str = None
+    ) -> str:
+        """Create a new Jira issue.
+        
+        Args:
+            project: Project key (PLAT, PROD, DEVX)
+            summary: Issue title/summary
+            description: Detailed description
+            issue_type: Type (Story, Task, Bug)
+            priority: Priority (Critical, High, Medium, Low)
+            assignee: Person to assign the issue to
+            labels: Comma-separated labels
+        
+        Returns:
+            Confirmation with new issue key
+        """
+        project = project.upper()
+        if project not in projects:
+            return f"❌ Invalid project key: {project}. Valid keys: {', '.join(projects.keys())}"
+        
+        # Generate new issue key
+        existing_keys = [i['key'] for i in issues + created_issues if i['key'].startswith(project)]
+        if existing_keys:
+            max_num = max(int(k.split('-')[1]) for k in existing_keys)
+            new_key = f"{project}-{max_num + 1}"
+        else:
+            new_key = f"{project}-1"
+        
+        label_list = [l.strip() for l in labels.split(',')] if labels else []
+        
+        new_issue = {
+            "key": new_key,
+            "summary": summary,
+            "description": description,
+            "type": issue_type,
+            "status": "To Do",
+            "priority": priority,
+            "assignee": assignee or "Unassigned",
+            "reporter": "AI Assistant",
+            "created": datetime.now().strftime("%Y-%m-%d"),
+            "updated": datetime.now().strftime("%Y-%m-%d"),
+            "labels": label_list,
+            "story_points": None
+        }
+        
+        created_issues.append(new_issue)
+        
+        return f"""✅ Issue Created Successfully!
+    ═══════════════════════════════════════
+    
+    🎫 Issue Key: {new_key}
+    📋 Summary: {summary}
+    📁 Project: {projects[project]['name']}
+    📌 Type: {issue_type}
+    🎯 Priority: {priority}
+    👤 Assignee: {new_issue['assignee']}
+    🏷️ Labels: {', '.join(label_list) if label_list else 'None'}
+    
+    View issue: https://jira.company.com/browse/{new_key}
+    """
+
+    @mcp.tool()
+    async def search_confluence(
+        query: str,
+        space: str = None,
+        labels: str = None
+    ) -> str:
+        """Search Confluence documentation.
+        
+        Args:
+            query: Search text
+            space: Space key to search in (PLAT, PROD, DEVX)
+            labels: Comma-separated labels to filter by
+        
+        Returns:
+            List of matching documentation pages
+        """
+        results = confluence_pages
+        
+        if space:
+            results = [p for p in results if p['space'].upper() == space.upper()]
+        
+        if labels:
+            label_list = [l.strip().lower() for l in labels.split(',')]
+            results = [p for p in results if any(l in [x.lower() for x in p['labels']] for l in label_list)]
+        
+        if query:
+            query_lower = query.lower()
+            results = [p for p in results if 
+                      query_lower in p['title'].lower() or 
+                      query_lower in p['content'].lower()]
+        
+        if not results:
+            return "🔍 No documentation found matching your criteria."
+        
+        output = f"📚 Confluence Pages ({len(results)} found)\n"
+        output += "═══════════════════════════════════════\n\n"
+        
+        for page in results:
+            output += f"📄 {page['title']}\n"
+            output += f"   📁 Space: {page['space']} | 👤 Author: {page['author']}\n"
+            output += f"   📅 Updated: {page['updated']}\n"
+            output += f"   🏷️ {', '.join(page['labels'])}\n"
+            # Show content preview
+            preview = page['content'][:150] + "..." if len(page['content']) > 150 else page['content']
+            output += f"   📝 {preview}\n\n"
+        
+        return output
+
+    @mcp.tool()
+    async def get_page_content(page_id: str) -> str:
+        """Get the full content of a Confluence page.
+        
+        Args:
+            page_id: The page ID (e.g., DOC-001)
+        
+        Returns:
+            Full page content
+        """
+        page = next((p for p in confluence_pages if p['id'].upper() == page_id.upper()), None)
+        
+        if not page:
+            return f"❌ Page {page_id} not found."
+        
+        return f"""📄 {page['title']}
+    ═══════════════════════════════════════
+    
+    📁 Space: {page['space']}
+    👤 Author: {page['author']}
+    📅 Created: {page['created']}
+    📅 Last Updated: {page['updated']}
+    🏷️ Labels: {', '.join(page['labels'])}
+    
+    ───────────────────────────────────────
+    
+    {page['content']}
+    """
+
+    @mcp.tool()
+    async def list_projects() -> str:
+        """List all available Jira projects.
+        
+        Returns:
+            List of projects with descriptions
+        """
+        output = "📁 Jira Projects\n"
+        output += "═══════════════════════════════════════\n\n"
+        
+        for key, proj in projects.items():
+            output += f"🏷️ [{key}] {proj['name']}\n"
+            output += f"   📝 {proj['description']}\n"
+            output += f"   👤 Lead: {proj['lead']}\n\n"
+        
+        return output
+
+    @mcp.tool()
+    async def get_sprint_info(project: str = None) -> str:
+        """Get information about active sprints.
+        
+        Args:
+            project: Optional project key to filter by
+        
+        Returns:
+            Sprint information
+        """
+        results = sprints
+        
+        if project:
+            results = [s for s in results if s['project'].upper() == project.upper()]
+        
+        if not results:
+            return "🔍 No active sprints found."
+        
+        output = "🏃 Active Sprints\n"
+        output += "═══════════════════════════════════════\n\n"
+        
+        for sprint in results:
+            output += f"📋 {sprint['name']} ({sprint['project']})\n"
+            output += f"   📅 {sprint['start_date']} → {sprint['end_date']}\n"
+            output += f"   🎯 Goal: {sprint['goal']}\n"
+            output += f"   📊 Status: {sprint['status']}\n\n"
+        
+        return output
+
+    if __name__ == "__main__":
+        import uvicorn
+        
+        print(f"""
+    ╔══════════════════════════════════════════════════════════════╗
+    ║           Jira/Confluence MCP Server                         ║
+    ╠══════════════════════════════════════════════════════════════╣
+    ║  Server Name: {SERVER_NAME:<45} ║
+    ║  Projects: {len(projects):<48} ║
+    ║  Issues: {len(issues):<50} ║
+    ║  Confluence Pages: {len(confluence_pages):<39} ║
+    ║  DNS Rebinding Protection: Disabled (K8s compatible)        ║
+    ╚══════════════════════════════════════════════════════════════╝
+        """)
+        
+        print("🚀 Starting Jira/Confluence MCP server on 0.0.0.0:8000...")
+        
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host='0.0.0.0', port=8000)
+
+  requirements.txt: |
+    mcp>=1.0.0
+    fastmcp>=0.1.0
+    uvicorn>=0.24.0
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jira-mcp-dockerfile
+  namespace: my-first-model
+  labels:
+    app: jira-mcp-server
+data:
+  Dockerfile: |
+    FROM python:3.11-slim
+    
+    WORKDIR /app
+    
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    
+    COPY server.py .
+    
+    EXPOSE 8000
+    
+    CMD ["python", "server.py"]
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: jira-mcp-server
+  namespace: my-first-model
+  labels:
+    app: jira-mcp-server
+spec:
+  lookupPolicy:
+    local: true
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: jira-mcp-server
+  namespace: my-first-model
+  labels:
+    app: jira-mcp-server
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: jira-mcp-server:latest
+  triggers: []
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jira-mcp-server
+  namespace: my-first-model
+  labels:
+    app: jira-mcp-server
+    app.kubernetes.io/name: jira-mcp-server
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jira-mcp-server
+  template:
+    metadata:
+      labels:
+        app: jira-mcp-server
+    spec:
+      containers:
+      - name: jira-mcp-server
+        image: image-registry.openshift-image-registry.svc:5000/my-first-model/jira-mcp-server:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: MCP_SERVER_NAME
+          value: "jira-confluence"
+        volumeMounts:
+        - name: mock-data
+          mountPath: /data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        # Note: FastMCP doesn't have a /health endpoint, use TCP socket probe
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          failureThreshold: 5
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: mock-data
+        configMap:
+          name: jira-mcp-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jira-mcp-server
+  namespace: my-first-model
+  labels:
+    app: jira-mcp-server
+spec:
+  selector:
+    app: jira-mcp-server
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: jira-mcp-server
+  namespace: my-first-model
+  labels:
+    app: jira-mcp-server
+spec:
+  to:
+    kind: Service
+    name: jira-mcp-server
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Allow

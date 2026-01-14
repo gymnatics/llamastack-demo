@@ -1,6 +1,6 @@
 """
-LlamaStack + MCP Demo UI
-A demonstration interface showing how LlamaStack orchestrates LLM + MCP tools
+LlamaStack Multi-MCP Demo UI
+Enhanced interface supporting multiple MCP servers with dynamic management
 """
 import streamlit as st
 import requests
@@ -11,53 +11,86 @@ from typing import List, Dict, Any, Optional
 
 # Configuration from environment or defaults
 LLAMASTACK_URL = os.getenv("LLAMASTACK_URL", "http://localhost:8321")
-MODEL_ID = os.getenv("MODEL_ID", "llama3")
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8000")
+MODEL_ID = os.getenv("MODEL_ID", "llama-32-3b-instruct")
 
-# UI Customization (optional environment variables)
-APP_TITLE = os.getenv("APP_TITLE", "LlamaStack + MCP Demo")
-APP_SUBTITLE = os.getenv("APP_SUBTITLE", "Demonstrating AI Agent orchestration with Model Context Protocol tools")
-MCP_SERVER_NAME = os.getenv("MCP_SERVER_NAME", "MCP Server")
-MCP_SERVER_DESCRIPTION = os.getenv("MCP_SERVER_DESCRIPTION", "Model Context Protocol server exposing tools to the LLM")
-DATA_SOURCE_NAME = os.getenv("DATA_SOURCE_NAME", "Data Source")
-LLM_DESCRIPTION = os.getenv("LLM_DESCRIPTION", "Large Language Model with tool-calling support. Decides when to use tools.")
-FOOTER_TEXT = os.getenv("FOOTER_TEXT", "")
-CHAT_PLACEHOLDER = os.getenv("CHAT_PLACEHOLDER", "Ask a question...")
-SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", """You are an intelligent assistant with access to external tools.
-Use the available tools to fetch real data when answering user questions.
-Always explain the data in a user-friendly way after retrieving it.""")
+# Default MCP Servers (can be overridden via environment)
+# NOTE: Weather MCP is colleague's OpenWeatherMap version on port 80 (service port)
+DEFAULT_MCP_SERVERS = json.loads(os.getenv("MCP_SERVERS", json.dumps([
+    {
+        "name": "Weather",
+        "url": "http://mcp-weather.my-first-model.svc.cluster.local:80",
+        "description": "Weather data via OpenWeatherMap API",
+        "icon": "🌤️",
+        "enabled": True
+    },
+    {
+        "name": "HR Tools",
+        "url": "http://hr-mcp-server.my-first-model.svc.cluster.local:8000",
+        "description": "Employee info, vacation, job openings, performance reviews",
+        "icon": "👥",
+        "enabled": True
+    },
+    {
+        "name": "Jira/Confluence",
+        "url": "http://jira-mcp-server.my-first-model.svc.cluster.local:8000",
+        "description": "Issue tracking and documentation",
+        "icon": "📋",
+        "enabled": True
+    },
+    {
+        "name": "GitHub",
+        "url": "http://github-mcp-server.my-first-model.svc.cluster.local:8000",
+        "description": "Repository search, issues, code search, user profiles",
+        "icon": "🐙",
+        "enabled": True
+    }
+])))
+
+# UI Customization
+APP_TITLE = os.getenv("APP_TITLE", "LlamaStack Multi-MCP Demo")
+APP_SUBTITLE = os.getenv("APP_SUBTITLE", "AI Agent with Multiple Tool Integrations")
+SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", """You are an intelligent AI assistant with access to multiple external tools through MCP servers.
+
+Available tool categories:
+- Weather: Get real-time weather forecasts (getforecast)
+- HR: Check vacation balances, employee info, job openings, performance reviews (get_vacation_balance, get_employee_info, list_employees, list_job_openings, get_performance_review, create_vacation_request)
+- Jira/Confluence: Search issues, create tickets, find documentation (search_issues, get_issue_details, create_issue, search_confluence, get_page_content, list_projects, get_sprint_info)
+- GitHub: Search repositories, get repo details, list issues, search code, get user profiles (search_repositories, get_repository, list_issues, create_issue, search_code, get_user)
+
+Use the appropriate tools to answer user questions accurately. Always explain what tools you're using and why.""")
 
 # Page config
 st.set_page_config(
-    page_title="LlamaStack + MCP Demo",
+    page_title=APP_TITLE,
     page_icon="🦙",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for a modern, distinctive look
+# Custom CSS for modern dark theme
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
     
     :root {
-        --primary: #6366f1;
-        --primary-light: #818cf8;
+        --primary: #8b5cf6;
+        --primary-light: #a78bfa;
         --secondary: #10b981;
+        --accent: #f59e0b;
+        --danger: #ef4444;
         --background: #0f172a;
         --surface: #1e293b;
         --surface-light: #334155;
         --text: #f1f5f9;
         --text-muted: #94a3b8;
         --border: #475569;
-        --accent: #f59e0b;
     }
     
     .stApp {
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-family: 'Inter', sans-serif;
     }
     
-    /* Header styling */
+    /* Header */
     .main-header {
         background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
         padding: 1.5rem 2rem;
@@ -70,59 +103,86 @@ st.markdown("""
         color: white;
         font-weight: 700;
         margin: 0;
-        font-size: 2rem;
+        font-size: 1.8rem;
     }
     
     .main-header p {
         color: rgba(255,255,255,0.85);
         margin: 0.5rem 0 0 0;
-        font-size: 1rem;
     }
     
-    /* Architecture diagram container */
-    .architecture-box {
+    /* MCP Server Cards */
+    .mcp-server-card {
         background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
         border: 1px solid #334155;
         border-radius: 12px;
-        padding: 1.5rem;
-        margin: 1rem 0;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        transition: all 0.2s ease;
     }
     
-    .flow-diagram {
+    .mcp-server-card:hover {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+    }
+    
+    .mcp-server-card.enabled {
+        border-left: 3px solid #10b981;
+    }
+    
+    .mcp-server-card.disabled {
+        border-left: 3px solid #475569;
+        opacity: 0.7;
+    }
+    
+    .mcp-server-header {
         display: flex;
         align-items: center;
-        justify-content: center;
         gap: 0.5rem;
-        flex-wrap: wrap;
-        padding: 1rem;
+        margin-bottom: 0.5rem;
     }
     
-    .flow-box {
-        background: linear-gradient(135deg, #334155, #1e293b);
-        border: 2px solid #6366f1;
-        border-radius: 10px;
-        padding: 0.75rem 1rem;
-        color: #f1f5f9;
-        font-weight: 600;
-        font-size: 0.85rem;
-        text-align: center;
-        min-width: 120px;
-    }
-    
-    .flow-box.mcp {
-        border-color: #10b981;
-        background: linear-gradient(135deg, #064e3b, #0f172a);
-    }
-    
-    .flow-box.llm {
-        border-color: #f59e0b;
-        background: linear-gradient(135deg, #451a03, #0f172a);
-    }
-    
-    .flow-arrow {
-        color: #6366f1;
+    .mcp-server-icon {
         font-size: 1.5rem;
-        font-weight: bold;
+    }
+    
+    .mcp-server-name {
+        font-weight: 600;
+        color: #f1f5f9;
+    }
+    
+    .mcp-server-desc {
+        font-size: 0.8rem;
+        color: #94a3b8;
+    }
+    
+    /* Status badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    
+    .status-badge.online {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        border: 1px solid #10b981;
+    }
+    
+    .status-badge.offline {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border: 1px solid #ef4444;
+    }
+    
+    .status-badge.checking {
+        background: rgba(245, 158, 11, 0.2);
+        color: #f59e0b;
+        border: 1px solid #f59e0b;
     }
     
     /* Tool call styling */
@@ -176,89 +236,63 @@ st.markdown("""
         overflow-y: auto;
     }
     
-    /* Status indicators */
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    
-    .status-badge.online {
-        background: rgba(16, 185, 129, 0.2);
-        color: #10b981;
-        border: 1px solid #10b981;
-    }
-    
-    .status-badge.offline {
-        background: rgba(239, 68, 68, 0.2);
-        color: #ef4444;
-        border: 1px solid #ef4444;
-    }
-    
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        animation: pulse 2s infinite;
-    }
-    
-    .status-dot.online {
-        background: #10b981;
-    }
-    
-    .status-dot.offline {
-        background: #ef4444;
-    }
-    
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-    
-    /* Config panel */
-    .config-section {
-        background: #1e293b;
-        border-radius: 10px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border: 1px solid #334155;
-    }
-    
-    .config-label {
-        color: #94a3b8;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 0.25rem;
-    }
-    
-    /* Info cards */
-    .info-card {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    /* Architecture diagram */
+    .architecture-container {
+        background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
         border: 1px solid #334155;
         border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    
+    .flow-diagram {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
         padding: 1rem;
-        margin: 0.5rem 0;
     }
     
-    .info-card h4 {
+    .flow-box {
+        background: linear-gradient(135deg, #334155, #1e293b);
+        border: 2px solid #6366f1;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
         color: #f1f5f9;
-        margin: 0 0 0.5rem 0;
-        font-size: 0.9rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-align: center;
+        min-width: 100px;
     }
     
-    .info-card p {
-        color: #94a3b8;
-        margin: 0;
-        font-size: 0.8rem;
+    .flow-box.mcp {
+        border-color: #10b981;
+        background: linear-gradient(135deg, #064e3b, #0f172a);
     }
     
-    /* Metrics row */
-    .metrics-row {
+    .flow-box.llm {
+        border-color: #f59e0b;
+        background: linear-gradient(135deg, #451a03, #0f172a);
+    }
+    
+    .flow-arrow {
+        color: #6366f1;
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+    
+    /* Add MCP form */
+    .add-mcp-form {
+        background: #1e293b;
+        border: 1px dashed #475569;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    /* Metrics */
+    .metrics-container {
         display: flex;
         gap: 1rem;
         margin: 1rem 0;
@@ -276,7 +310,7 @@ st.markdown("""
     .metric-value {
         font-size: 1.5rem;
         font-weight: 700;
-        color: #6366f1;
+        color: #8b5cf6;
     }
     
     .metric-label {
@@ -290,16 +324,18 @@ st.markdown("""
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "mcp_servers" not in st.session_state:
+    st.session_state.mcp_servers = DEFAULT_MCP_SERVERS.copy()
 if "mcp_tools" not in st.session_state:
     st.session_state.mcp_tools = []
 if "llamastack_status" not in st.session_state:
     st.session_state.llamastack_status = "unknown"
-if "mcp_status" not in st.session_state:
-    st.session_state.mcp_status = "unknown"
+if "mcp_statuses" not in st.session_state:
+    st.session_state.mcp_statuses = {}
 if "tool_calls_count" not in st.session_state:
     st.session_state.tool_calls_count = 0
-if "show_architecture" not in st.session_state:
-    st.session_state.show_architecture = True
+if "show_add_mcp" not in st.session_state:
+    st.session_state.show_add_mcp = False
 
 
 def check_llamastack_health() -> bool:
@@ -311,11 +347,18 @@ def check_llamastack_health() -> bool:
         return False
 
 
-def check_mcp_health() -> bool:
-    """Check if MCP server is healthy."""
+def check_mcp_health(url: str) -> bool:
+    """Check if an MCP server is healthy."""
     try:
+        # Try health endpoint first
+        health_url = f"{url}/health"
+        response = requests.get(health_url, timeout=5)
+        if response.status_code == 200:
+            return True
+        
+        # Try MCP initialize
         response = requests.post(
-            f"{MCP_SERVER_URL}/mcp",
+            f"{url}/mcp",
             json={
                 "jsonrpc": "2.0",
                 "method": "initialize",
@@ -326,10 +369,7 @@ def check_mcp_health() -> bool:
                 },
                 "id": 1
             },
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/json, text/event-stream"
-            },
+            headers={"Content-Type": "application/json"},
             timeout=5
         )
         return response.status_code == 200
@@ -343,7 +383,6 @@ def get_available_tools() -> List[Dict]:
         response = requests.get(f"{LLAMASTACK_URL}/v1/tools", timeout=10)
         if response.status_code == 200:
             data = response.json()
-            # Handle both list and dict responses
             if isinstance(data, list):
                 return data
             return data.get("data", [])
@@ -400,7 +439,6 @@ def format_tools_for_openai(mcp_tools: List[Dict]) -> List[Dict]:
 def execute_tool_call(tool_name: str, tool_args: Dict) -> str:
     """Execute a tool call via LlamaStack."""
     try:
-        # Try the tool-runtime invoke endpoint
         response = requests.post(
             f"{LLAMASTACK_URL}/v1/tool-runtime/invoke",
             json={
@@ -412,10 +450,8 @@ def execute_tool_call(tool_name: str, tool_args: Dict) -> str:
         response.raise_for_status()
         result = response.json()
         
-        # Handle various response formats
         if isinstance(result, dict):
             content = result.get("content", result)
-            # If content is a list, convert each item to string and join
             if isinstance(content, list):
                 return "\n".join(
                     item.get("text", json.dumps(item)) if isinstance(item, dict) else str(item)
@@ -434,6 +470,30 @@ def execute_tool_call(tool_name: str, tool_args: Dict) -> str:
         return f"Tool execution error: {str(e)}"
 
 
+def add_mcp_server(name: str, url: str, description: str, icon: str = "🔧"):
+    """Add a new MCP server to the session."""
+    new_server = {
+        "name": name,
+        "url": url,
+        "description": description,
+        "icon": icon,
+        "enabled": True
+    }
+    st.session_state.mcp_servers.append(new_server)
+
+
+def remove_mcp_server(index: int):
+    """Remove an MCP server from the session."""
+    if 0 <= index < len(st.session_state.mcp_servers):
+        st.session_state.mcp_servers.pop(index)
+
+
+def toggle_mcp_server(index: int):
+    """Toggle an MCP server on/off."""
+    if 0 <= index < len(st.session_state.mcp_servers):
+        st.session_state.mcp_servers[index]["enabled"] = not st.session_state.mcp_servers[index]["enabled"]
+
+
 # ============== HEADER ==============
 st.markdown(f"""
 <div class="main-header">
@@ -447,7 +507,7 @@ with st.sidebar:
     st.markdown("### 🔧 Configuration")
     
     # Connection settings
-    with st.expander("🌐 Endpoints", expanded=False):
+    with st.expander("🌐 LlamaStack Endpoint", expanded=False):
         new_llamastack_url = st.text_input(
             "LlamaStack URL",
             value=LLAMASTACK_URL,
@@ -458,58 +518,103 @@ with st.sidebar:
             value=MODEL_ID,
             help="Model identifier in LlamaStack"
         )
-        new_mcp_url = st.text_input(
-            "MCP Server URL",
-            value=MCP_SERVER_URL,
-            help="MCP Server endpoint"
-        )
         
-        # Update globals if changed
         if new_llamastack_url != LLAMASTACK_URL:
             LLAMASTACK_URL = new_llamastack_url
         if new_model_id != MODEL_ID:
             MODEL_ID = new_model_id
-        if new_mcp_url != MCP_SERVER_URL:
-            MCP_SERVER_URL = new_mcp_url
     
     st.markdown("---")
     
-    # Status checks
-    st.markdown("### 📡 Service Status")
-    
-    col1, col2 = st.columns(2)
-    
+    # LlamaStack Status
+    st.markdown("### 📡 LlamaStack Status")
+    col1, col2 = st.columns([2, 1])
     with col1:
-        if st.button("🔄 Check", key="check_status"):
+        ls_status = st.session_state.llamastack_status
+        ls_class = "online" if ls_status == "online" else "offline" if ls_status == "offline" else "checking"
+        st.markdown(f"""
+        <div class="status-badge {ls_class}">
+            ● {ls_status.upper()}
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        if st.button("🔄", key="check_ls"):
             st.session_state.llamastack_status = "online" if check_llamastack_health() else "offline"
-            st.session_state.mcp_status = "online" if check_mcp_health() else "offline"
+            st.rerun()
     
-    # LlamaStack status
-    ls_status = st.session_state.llamastack_status
-    ls_class = "online" if ls_status == "online" else "offline"
-    st.markdown(f"""
-    <div class="status-badge {ls_class}">
-        <span class="status-dot {ls_class}"></span>
-        LlamaStack: {ls_status.upper()}
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("---")
     
-    # MCP status  
-    mcp_status = st.session_state.mcp_status
-    mcp_class = "online" if mcp_status == "online" else "offline"
-    st.markdown(f"""
-    <div class="status-badge {mcp_class}">
-        <span class="status-dot {mcp_class}"></span>
-        MCP Server: {mcp_status.upper()}
-    </div>
-    """, unsafe_allow_html=True)
+    # MCP Servers Section
+    st.markdown("### 🔌 MCP Servers")
+    
+    # Check all servers button
+    if st.button("🔄 Check All Servers", use_container_width=True):
+        for i, server in enumerate(st.session_state.mcp_servers):
+            status = "online" if check_mcp_health(server["url"]) else "offline"
+            st.session_state.mcp_statuses[server["name"]] = status
+        st.rerun()
+    
+    # Display MCP servers
+    for i, server in enumerate(st.session_state.mcp_servers):
+        status = st.session_state.mcp_statuses.get(server["name"], "unknown")
+        enabled_class = "enabled" if server["enabled"] else "disabled"
+        
+        with st.container():
+            col1, col2, col3 = st.columns([3, 1, 1])
+            
+            with col1:
+                st.markdown(f"""
+                <div class="mcp-server-card {enabled_class}">
+                    <div class="mcp-server-header">
+                        <span class="mcp-server-icon">{server['icon']}</span>
+                        <span class="mcp-server-name">{server['name']}</span>
+                    </div>
+                    <div class="mcp-server-desc">{server['description']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                # Toggle button
+                toggle_label = "✓" if server["enabled"] else "○"
+                if st.button(toggle_label, key=f"toggle_{i}", help="Toggle server"):
+                    toggle_mcp_server(i)
+                    st.rerun()
+            
+            with col3:
+                # Remove button (only for non-default servers)
+                if i >= len(DEFAULT_MCP_SERVERS):
+                    if st.button("🗑️", key=f"remove_{i}", help="Remove server"):
+                        remove_mcp_server(i)
+                        st.rerun()
+    
+    # Add new MCP server
+    st.markdown("---")
+    if st.button("➕ Add MCP Server", use_container_width=True):
+        st.session_state.show_add_mcp = not st.session_state.show_add_mcp
+    
+    if st.session_state.show_add_mcp:
+        with st.form("add_mcp_form"):
+            st.markdown("**Add New MCP Server**")
+            new_name = st.text_input("Name", placeholder="My MCP Server")
+            new_url = st.text_input("URL", placeholder="http://service:8000")
+            new_desc = st.text_input("Description", placeholder="What does this server do?")
+            new_icon = st.selectbox("Icon", ["🔧", "📊", "🔍", "💾", "🌐", "📁", "🔒", "⚡"])
+            
+            if st.form_submit_button("Add Server"):
+                if new_name and new_url:
+                    add_mcp_server(new_name, new_url, new_desc, new_icon)
+                    st.session_state.show_add_mcp = False
+                    st.success(f"Added {new_name}!")
+                    st.rerun()
+                else:
+                    st.error("Name and URL are required")
     
     st.markdown("---")
     
     # Tools section
-    st.markdown("### 🛠️ MCP Tools")
+    st.markdown("### 🛠️ Available Tools")
     
-    if st.button("🔄 Refresh Tools"):
+    if st.button("🔄 Refresh Tools", use_container_width=True):
         st.session_state.mcp_tools = get_available_tools()
         if st.session_state.mcp_tools:
             st.success(f"Found {len(st.session_state.mcp_tools)} tools!")
@@ -517,12 +622,29 @@ with st.sidebar:
             st.warning("No tools found")
     
     if st.session_state.mcp_tools:
+        # Group tools by prefix
+        tool_groups = {}
         for tool in st.session_state.mcp_tools:
             tool_name = tool.get("name", tool.get("identifier", "Unknown"))
-            with st.expander(f"📦 {tool_name}"):
-                st.caption(tool.get("description", "No description")[:200])
+            # Try to extract group from tool name
+            if "::" in tool_name:
+                group = tool_name.split("::")[0]
+            elif "_" in tool_name:
+                group = tool_name.split("_")[0]
+            else:
+                group = "Other"
+            
+            if group not in tool_groups:
+                tool_groups[group] = []
+            tool_groups[group].append(tool)
+        
+        for group, tools in tool_groups.items():
+            with st.expander(f"📦 {group} ({len(tools)} tools)"):
+                for tool in tools:
+                    tool_name = tool.get("name", tool.get("identifier", "Unknown"))
+                    st.caption(f"• {tool_name}")
     else:
-        st.info("Click 'Refresh Tools' to load available MCP tools")
+        st.info("Click 'Refresh Tools' to load")
     
     st.markdown("---")
     
@@ -533,76 +655,70 @@ with st.sidebar:
         st.session_state.messages = []
         st.session_state.tool_calls_count = 0
         st.rerun()
-    
-    st.checkbox("Show Architecture", value=True, key="show_architecture")
 
 # ============== MAIN CONTENT ==============
 
-# Architecture diagram (collapsible)
-if st.session_state.show_architecture:
-    with st.expander("🏗️ Architecture Overview", expanded=True):
-        st.markdown(f"""
-        <div class="architecture-box">
-            <div class="flow-diagram">
-                <div class="flow-box">👤 User Query</div>
-                <span class="flow-arrow">→</span>
-                <div class="flow-box">🦙 LlamaStack</div>
-                <span class="flow-arrow">→</span>
-                <div class="flow-box llm">🤖 LLM<br/>({MODEL_ID})</div>
-                <span class="flow-arrow">→</span>
-                <div class="flow-box mcp">🔧 {MCP_SERVER_NAME}</div>
-                <span class="flow-arrow">→</span>
-                <div class="flow-box">📊 {DATA_SOURCE_NAME}</div>
+# Architecture diagram
+with st.expander("🏗️ Architecture Overview", expanded=True):
+    enabled_servers = [s for s in st.session_state.mcp_servers if s["enabled"]]
+    
+    st.markdown("""
+    <div class="architecture-container">
+        <div class="flow-diagram">
+            <div class="flow-box">👤 User</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-box">🦙 LlamaStack</div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-box llm">🤖 LLM</div>
+            <span class="flow-arrow">→</span>
+    """, unsafe_allow_html=True)
+    
+    # Show enabled MCP servers
+    mcp_html = ""
+    for server in enabled_servers:
+        mcp_html += f'<div class="flow-box mcp">{server["icon"]} {server["name"]}</div>'
+    
+    st.markdown(f"""
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {mcp_html}
             </div>
         </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            <div class="info-card">
-                <h4>🦙 LlamaStack</h4>
-                <p>Orchestrates the AI agent, manages tool calls, and routes requests between the LLM and MCP servers.</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Server details
+    cols = st.columns(len(enabled_servers) if enabled_servers else 1)
+    for i, server in enumerate(enabled_servers):
+        with cols[i]:
+            status = st.session_state.mcp_statuses.get(server["name"], "unknown")
+            status_color = "#10b981" if status == "online" else "#ef4444" if status == "offline" else "#f59e0b"
             st.markdown(f"""
-            <div class="info-card">
-                <h4>🔧 {MCP_SERVER_NAME}</h4>
-                <p>{MCP_SERVER_DESCRIPTION}</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown(f"""
-            <div class="info-card">
-                <h4>🤖 LLM ({MODEL_ID})</h4>
-                <p>{LLM_DESCRIPTION}</p>
+            <div style="background: #1e293b; border-radius: 8px; padding: 0.75rem; text-align: center;">
+                <div style="font-size: 1.5rem;">{server['icon']}</div>
+                <div style="font-weight: 600; color: #f1f5f9;">{server['name']}</div>
+                <div style="font-size: 0.7rem; color: {status_color};">● {status}</div>
             </div>
             """, unsafe_allow_html=True)
 
 # Metrics
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.metric("💬 Messages", len(st.session_state.messages))
 with col2:
     st.metric("🔧 Tool Calls", st.session_state.tool_calls_count)
 with col3:
-    st.metric("🛠️ Available Tools", len(st.session_state.mcp_tools))
+    enabled_count = len([s for s in st.session_state.mcp_servers if s["enabled"]])
+    st.metric("🔌 Active MCPs", enabled_count)
+with col4:
+    st.metric("🛠️ Tools", len(st.session_state.mcp_tools))
 
 st.markdown("---")
-
-# System message for the model (uses environment variable SYSTEM_PROMPT if set)
-SYSTEM_MESSAGE = SYSTEM_PROMPT
 
 # Display chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         
-        # Show tool calls if present
         if "tool_calls" in message and message["tool_calls"]:
             for tc in message["tool_calls"]:
                 st.markdown(f"""
@@ -612,7 +728,6 @@ for message in st.session_state.messages:
                 </div>
                 """, unsafe_allow_html=True)
         
-        # Show tool results if present
         if "tool_result" in message and message["tool_result"]:
             result_preview = message["tool_result"][:500] + "..." if len(message["tool_result"]) > 500 else message["tool_result"]
             st.markdown(f"""
@@ -623,14 +738,13 @@ for message in st.session_state.messages:
             """, unsafe_allow_html=True)
 
 # Chat input
-if prompt := st.chat_input(CHAT_PLACEHOLDER):
-    # Add user message
+if prompt := st.chat_input("Ask a question... (e.g., 'What's the weather at VIDP?' or 'Check vacation balance for EMP001')"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
     
     # Build messages for API
-    api_messages = [{"role": "system", "content": SYSTEM_MESSAGE}]
+    api_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for msg in st.session_state.messages:
         api_messages.append({"role": msg["role"], "content": msg["content"]})
     
@@ -652,7 +766,6 @@ if prompt := st.chat_input(CHAT_PLACEHOLDER):
             choice = response.get("choices", [{}])[0]
             message = choice.get("message", {})
             
-            # Check for tool calls
             if message.get("tool_calls"):
                 tool_calls_info = []
                 tool_results = []
@@ -679,7 +792,6 @@ if prompt := st.chat_input(CHAT_PLACEHOLDER):
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Execute tool
                     with st.spinner(f"⚙️ Executing {tool_name}..."):
                         result = execute_tool_call(tool_name, tool_args)
                         tool_results.append(result)
@@ -692,7 +804,6 @@ if prompt := st.chat_input(CHAT_PLACEHOLDER):
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # Add tool call message to history
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": "Using tools to fetch data...",
@@ -700,7 +811,6 @@ if prompt := st.chat_input(CHAT_PLACEHOLDER):
                     "tool_result": "\n".join(tool_results)
                 })
                 
-                # Now get the final response with tool results
                 api_messages.append({
                     "role": "assistant",
                     "content": None,
@@ -727,7 +837,6 @@ if prompt := st.chat_input(CHAT_PLACEHOLDER):
                 else:
                     st.error(f"Error generating final response: {final_response['error']}")
             else:
-                # No tool calls, just display the response
                 content = message.get("content", "")
                 st.markdown(content)
                 st.session_state.messages.append({
@@ -737,12 +846,10 @@ if prompt := st.chat_input(CHAT_PLACEHOLDER):
 
 # Footer
 st.markdown("---")
-footer_html = f"""
+enabled_servers = [s["name"] for s in st.session_state.mcp_servers if s["enabled"]]
+st.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.8rem;">
-    <p>🦙 LlamaStack + 🔧 MCP Demo | Powered by {MODEL_ID}</p>
-"""
-if FOOTER_TEXT:
-    footer_html += f"    <p>{FOOTER_TEXT}</p>\n"
-footer_html += "</div>"
-st.markdown(footer_html, unsafe_allow_html=True)
-
+    <p>🦙 LlamaStack Multi-MCP Demo | Model: {MODEL_ID}</p>
+    <p>Active MCP Servers: {', '.join(enabled_servers) if enabled_servers else 'None'}</p>
+</div>
+""", unsafe_allow_html=True)

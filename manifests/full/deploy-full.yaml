@@ -1,0 +1,821 @@
+# Full: LlamaStack Distribution with ALL 4 MCP Servers
+# Namespace: llamastack-full
+#
+# Weather + HR + Jira/Confluence + GitHub
+#
+# To deploy:
+#   oc apply -f deploy-full.yaml
+#
+---
+# ============================================
+# Weather MCP Server
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-weather
+  namespace: llamastack-full
+  labels:
+    app: mcp-weather
+    app.kubernetes.io/part-of: llamastack-full
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-weather
+  template:
+    metadata:
+      labels:
+        app: mcp-weather
+    spec:
+      containers:
+      - name: mcp-weather
+        image: quay.io/rh-aiservices-bu/mcp-weather:0.1.0-amd64
+        ports:
+        - containerPort: 3001
+          name: http
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-weather
+  namespace: llamastack-full
+  labels:
+    app: mcp-weather
+spec:
+  selector:
+    app: mcp-weather
+  ports:
+  - port: 80
+    targetPort: 3001
+    name: http
+---
+# ============================================
+# HR MCP Server
+# ============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hr-api-data
+  namespace: llamastack-full
+  labels:
+    app: hr-mcp-server
+data:
+  employees.json: |
+    {
+      "employees": [
+        {"id": "EMP001", "name": "Alice Johnson", "department": "Engineering", "title": "Senior Developer", "email": "alice@company.com", "manager": "EMP005", "vacation_balance": 15, "hire_date": "2020-03-15"},
+        {"id": "EMP002", "name": "Bob Smith", "department": "Marketing", "title": "Marketing Manager", "email": "bob@company.com", "manager": "EMP006", "vacation_balance": 12, "hire_date": "2019-07-01"},
+        {"id": "EMP003", "name": "Carol Williams", "department": "Engineering", "title": "DevOps Engineer", "email": "carol@company.com", "manager": "EMP005", "vacation_balance": 18, "hire_date": "2018-11-20"},
+        {"id": "EMP004", "name": "David Brown", "department": "HR", "title": "HR Specialist", "email": "david@company.com", "manager": "EMP007", "vacation_balance": 10, "hire_date": "2021-01-10"},
+        {"id": "EMP005", "name": "Eva Martinez", "department": "Engineering", "title": "Engineering Director", "email": "eva@company.com", "manager": "EMP008", "vacation_balance": 20, "hire_date": "2017-05-01"}
+      ],
+      "job_openings": [
+        {"id": "JOB001", "title": "Senior Software Engineer", "department": "Engineering", "location": "Remote", "salary_range": "$120k-$160k"},
+        {"id": "JOB002", "title": "Product Manager", "department": "Product", "location": "New York", "salary_range": "$130k-$170k"},
+        {"id": "JOB003", "title": "Data Scientist", "department": "Data", "location": "San Francisco", "salary_range": "$140k-$180k"}
+      ],
+      "vacation_requests": []
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hr-mcp-code
+  namespace: llamastack-full
+  labels:
+    app: hr-mcp-server
+data:
+  server.py: |
+    import json
+    import os
+    from datetime import datetime
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    mcp = FastMCP("hr-tools", transport_security=transport_security)
+
+    HR_DATA = json.loads(os.getenv("HR_DATA", '{"employees":[],"job_openings":[],"vacation_requests":[]}'))
+
+    @mcp.tool()
+    def get_vacation_balance(employee_id: str) -> str:
+        """Get vacation balance for an employee."""
+        for emp in HR_DATA.get("employees", []):
+            if emp["id"].upper() == employee_id.upper():
+                return f"Employee {emp['name']} ({emp['id']}) has {emp['vacation_balance']} vacation days remaining."
+        return f"Employee {employee_id} not found."
+
+    @mcp.tool()
+    def get_employee_info(employee_id: str) -> str:
+        """Get detailed information about an employee."""
+        for emp in HR_DATA.get("employees", []):
+            if emp["id"].upper() == employee_id.upper():
+                return f"""Employee Information:
+    Name: {emp['name']}
+    ID: {emp['id']}
+    Department: {emp['department']}
+    Title: {emp['title']}
+    Email: {emp['email']}
+    Hire Date: {emp['hire_date']}
+    Vacation Balance: {emp['vacation_balance']} days"""
+        return f"Employee {employee_id} not found."
+
+    @mcp.tool()
+    def list_employees(department: str = "") -> str:
+        """List all employees, optionally filtered by department."""
+        employees = HR_DATA.get("employees", [])
+        if department:
+            employees = [e for e in employees if e["department"].lower() == department.lower()]
+        if not employees:
+            return f"No employees found{' in ' + department if department else ''}."
+        result = f"Employees{' in ' + department if department else ''}:\n"
+        for emp in employees:
+            result += f"  - {emp['name']} ({emp['id']}) - {emp['title']}\n"
+        return result
+
+    @mcp.tool()
+    def list_job_openings() -> str:
+        """List all current job openings."""
+        jobs = HR_DATA.get("job_openings", [])
+        if not jobs:
+            return "No job openings available."
+        result = "Current Job Openings:\n"
+        for job in jobs:
+            result += f"  - {job['title']} ({job['id']})\n    Department: {job['department']}, Location: {job['location']}\n    Salary: {job['salary_range']}\n"
+        return result
+
+    @mcp.tool()
+    def create_vacation_request(employee_id: str, start_date: str, end_date: str, reason: str = "") -> str:
+        """Create a vacation request for an employee."""
+        for emp in HR_DATA.get("employees", []):
+            if emp["id"].upper() == employee_id.upper():
+                request_id = f"VAC{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                return f"Vacation request {request_id} created for {emp['name']} from {start_date} to {end_date}. Status: Pending approval."
+        return f"Employee {employee_id} not found."
+
+    if __name__ == "__main__":
+        import uvicorn
+        print("Starting HR MCP Server on port 8000...")
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host='0.0.0.0', port=8000)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hr-mcp-server
+  namespace: llamastack-full
+  labels:
+    app: hr-mcp-server
+    app.kubernetes.io/part-of: llamastack-full
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hr-mcp-server
+  template:
+    metadata:
+      labels:
+        app: hr-mcp-server
+    spec:
+      containers:
+      - name: hr-mcp-server
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          export HOME=/tmp
+          pip install --user mcp uvicorn
+          export PATH=/tmp/.local/bin:$PATH
+          python /app/server.py
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: HR_DATA
+          valueFrom:
+            configMapKeyRef:
+              name: hr-api-data
+              key: employees.json
+        volumeMounts:
+        - name: code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 90
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+      volumes:
+      - name: code
+        configMap:
+          name: hr-mcp-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hr-mcp-server
+  namespace: llamastack-full
+  labels:
+    app: hr-mcp-server
+spec:
+  selector:
+    app: hr-mcp-server
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+---
+# ============================================
+# Jira/Confluence MCP Server
+# ============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jira-mcp-code
+  namespace: llamastack-full
+  labels:
+    app: jira-mcp-server
+data:
+  server.py: |
+    import json
+    from datetime import datetime
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    mcp = FastMCP("jira-confluence", transport_security=transport_security)
+
+    JIRA_DATA = {
+        "projects": [
+            {"key": "DEMO", "name": "Demo Project", "lead": "alice"},
+            {"key": "INFRA", "name": "Infrastructure", "lead": "carol"},
+            {"key": "PROD", "name": "Product Development", "lead": "bob"}
+        ],
+        "issues": [
+            {"key": "DEMO-1", "summary": "Setup CI/CD pipeline", "status": "Done", "assignee": "carol", "type": "Task"},
+            {"key": "DEMO-2", "summary": "Implement user authentication", "status": "In Progress", "assignee": "alice", "type": "Story"},
+            {"key": "DEMO-3", "summary": "Fix login page bug", "status": "Open", "assignee": "alice", "type": "Bug"},
+            {"key": "INFRA-1", "summary": "Upgrade Kubernetes cluster", "status": "In Progress", "assignee": "carol", "type": "Task"}
+        ],
+        "confluence_pages": [
+            {"id": "1", "title": "Getting Started Guide", "space": "DEMO", "content": "Welcome to the demo project..."},
+            {"id": "2", "title": "API Documentation", "space": "DEMO", "content": "REST API endpoints..."},
+            {"id": "3", "title": "Architecture Overview", "space": "INFRA", "content": "System architecture..."}
+        ]
+    }
+
+    @mcp.tool()
+    def search_issues(query: str, project: str = "") -> str:
+        """Search for Jira issues."""
+        issues = JIRA_DATA["issues"]
+        if project:
+            issues = [i for i in issues if i["key"].startswith(project.upper())]
+        if query:
+            issues = [i for i in issues if query.lower() in i["summary"].lower() or query.lower() in i["key"].lower()]
+        if not issues:
+            return "No issues found."
+        result = "Found issues:\n"
+        for issue in issues:
+            result += f"  [{issue['key']}] {issue['summary']}\n    Status: {issue['status']} | Type: {issue['type']} | Assignee: {issue['assignee']}\n"
+        return result
+
+    @mcp.tool()
+    def get_issue_details(issue_key: str) -> str:
+        """Get details of a specific Jira issue."""
+        for issue in JIRA_DATA["issues"]:
+            if issue["key"].upper() == issue_key.upper():
+                return f"""Issue: {issue['key']}
+    Summary: {issue['summary']}
+    Type: {issue['type']}
+    Status: {issue['status']}
+    Assignee: {issue['assignee']}"""
+        return f"Issue {issue_key} not found."
+
+    @mcp.tool()
+    def create_issue(project: str, summary: str, issue_type: str = "Task", description: str = "") -> str:
+        """Create a new Jira issue."""
+        issue_num = len([i for i in JIRA_DATA["issues"] if i["key"].startswith(project.upper())]) + 1
+        issue_key = f"{project.upper()}-{issue_num}"
+        return f"Issue {issue_key} created: {summary}"
+
+    @mcp.tool()
+    def search_confluence(query: str, space: str = "") -> str:
+        """Search Confluence pages."""
+        pages = JIRA_DATA["confluence_pages"]
+        if space:
+            pages = [p for p in pages if p["space"].upper() == space.upper()]
+        if query:
+            pages = [p for p in pages if query.lower() in p["title"].lower() or query.lower() in p["content"].lower()]
+        if not pages:
+            return "No pages found."
+        result = "Found pages:\n"
+        for page in pages:
+            result += f"  [{page['space']}] {page['title']}\n"
+        return result
+
+    @mcp.tool()
+    def list_projects() -> str:
+        """List all Jira projects."""
+        result = "Projects:\n"
+        for proj in JIRA_DATA["projects"]:
+            result += f"  [{proj['key']}] {proj['name']} (Lead: {proj['lead']})\n"
+        return result
+
+    if __name__ == "__main__":
+        import uvicorn
+        print("Starting Jira/Confluence MCP Server on port 8000...")
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host='0.0.0.0', port=8000)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jira-mcp-server
+  namespace: llamastack-full
+  labels:
+    app: jira-mcp-server
+    app.kubernetes.io/part-of: llamastack-full
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jira-mcp-server
+  template:
+    metadata:
+      labels:
+        app: jira-mcp-server
+    spec:
+      containers:
+      - name: jira-mcp-server
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          export HOME=/tmp
+          pip install --user mcp uvicorn
+          export PATH=/tmp/.local/bin:$PATH
+          python /app/server.py
+        ports:
+        - containerPort: 8000
+          name: http
+        volumeMounts:
+        - name: code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 90
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+      volumes:
+      - name: code
+        configMap:
+          name: jira-mcp-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jira-mcp-server
+  namespace: llamastack-full
+  labels:
+    app: jira-mcp-server
+spec:
+  selector:
+    app: jira-mcp-server
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+---
+# ============================================
+# GitHub MCP Server
+# ============================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-mcp-token
+  namespace: llamastack-full
+  labels:
+    app: github-mcp-server
+type: Opaque
+stringData:
+  GITHUB_PERSONAL_ACCESS_TOKEN: "ghp_REPLACE_WITH_YOUR_TOKEN"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: github-mcp-code
+  namespace: llamastack-full
+  labels:
+    app: github-mcp-server
+data:
+  server.py: |
+    import os
+    import httpx
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    GITHUB_TOKEN = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+    GITHUB_API = "https://api.github.com"
+
+    transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    mcp = FastMCP("github-tools", transport_security=transport_security)
+
+    headers = {
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28"
+    }
+
+    @mcp.tool()
+    async def search_repositories(query: str, per_page: int = 10) -> str:
+        """Search for GitHub repositories."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{GITHUB_API}/search/repositories",
+                params={"q": query, "per_page": min(per_page, 100)},
+                headers=headers,
+                timeout=30
+            )
+            if response.status_code != 200:
+                return f"Error: {response.status_code} - {response.text}"
+            data = response.json()
+            results = []
+            for repo in data.get("items", [])[:per_page]:
+                results.append(f"📦 {repo['full_name']} ⭐ {repo['stargazers_count']}\n   {repo.get('description', 'No description')[:100]}")
+            return f"Found {data['total_count']} repositories:\n\n" + "\n\n".join(results)
+
+    @mcp.tool()
+    async def get_repository(owner: str, repo: str) -> str:
+        """Get details about a specific repository."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{GITHUB_API}/repos/{owner}/{repo}", headers=headers, timeout=30)
+            if response.status_code != 200:
+                return f"Error: {response.status_code} - {response.text}"
+            r = response.json()
+            return f"""📦 {r['full_name']}
+    {r.get('description', 'No description')}
+    ⭐ Stars: {r['stargazers_count']} | 🍴 Forks: {r['forks_count']}
+    🔗 {r['html_url']}"""
+
+    @mcp.tool()
+    async def list_issues(owner: str, repo: str, state: str = "open", per_page: int = 10) -> str:
+        """List issues in a repository."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{GITHUB_API}/repos/{owner}/{repo}/issues",
+                params={"state": state, "per_page": per_page},
+                headers=headers,
+                timeout=30
+            )
+            if response.status_code != 200:
+                return f"Error: {response.status_code} - {response.text}"
+            issues = response.json()
+            if not issues:
+                return f"No {state} issues found."
+            results = []
+            for issue in issues:
+                results.append(f"#{issue['number']} {issue['title']}\n   Status: {issue['state']} | By: {issue['user']['login']}")
+            return f"Issues in {owner}/{repo}:\n\n" + "\n\n".join(results)
+
+    @mcp.tool()
+    async def get_user(username: str) -> str:
+        """Get information about a GitHub user."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{GITHUB_API}/users/{username}", headers=headers, timeout=30)
+            if response.status_code != 200:
+                return f"Error: {response.status_code} - {response.text}"
+            u = response.json()
+            return f"""👤 {u['login']} {f"({u['name']})" if u.get('name') else ''}
+    📦 Repos: {u['public_repos']} | 👥 Followers: {u['followers']}
+    🔗 {u['html_url']}"""
+
+    if __name__ == "__main__":
+        import uvicorn
+        print("Starting GitHub MCP Server on port 8000...")
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host='0.0.0.0', port=8000)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-mcp-server
+  namespace: llamastack-full
+  labels:
+    app: github-mcp-server
+    app.kubernetes.io/part-of: llamastack-full
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: github-mcp-server
+  template:
+    metadata:
+      labels:
+        app: github-mcp-server
+    spec:
+      containers:
+      - name: github-mcp-server
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          export HOME=/tmp
+          pip install --user mcp uvicorn httpx
+          export PATH=/tmp/.local/bin:$PATH
+          python /app/server.py
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: GITHUB_PERSONAL_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-mcp-token
+              key: GITHUB_PERSONAL_ACCESS_TOKEN
+        volumeMounts:
+        - name: code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 90
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+      volumes:
+      - name: code
+        configMap:
+          name: github-mcp-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: github-mcp-server
+  namespace: llamastack-full
+  labels:
+    app: github-mcp-server
+spec:
+  selector:
+    app: github-mcp-server
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+---
+# ============================================
+# LlamaStack Distribution (Full)
+# ============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llama-stack-config
+  namespace: llamastack-full
+  labels:
+    app: lsd-genai-playground
+    app.kubernetes.io/part-of: llamastack-full
+data:
+  run.yaml: |
+    version: "2"
+    image_name: rh
+    apis:
+    - agents
+    - datasetio
+    - files
+    - inference
+    - safety
+    - scoring
+    - tool_runtime
+    - vector_io
+    providers:
+      inference:
+      - provider_id: sentence-transformers
+        provider_type: inline::sentence-transformers
+        config: {}
+      - provider_id: vllm-inference-1
+        provider_type: remote::vllm
+        config:
+          api_token: ${env.VLLM_API_TOKEN_1:=fake}
+          max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          url: http://llama-32-3b-instruct-predictor.my-first-model.svc.cluster.local:8080/v1
+      vector_io:
+      - provider_id: milvus
+        provider_type: inline::milvus
+        config:
+          db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
+          kvstore:
+            db_path: /opt/app-root/src/.llama/distributions/rh/milvus_registry.db
+            namespace: null
+            type: sqlite
+      agents:
+      - provider_id: meta-reference
+        provider_type: inline::meta-reference
+        config:
+          persistence_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/agents_store.db
+            namespace: null
+            type: sqlite
+          responses_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/responses_store.db
+            type: sqlite
+      eval: []
+      files:
+      - provider_id: meta-reference-files
+        provider_type: inline::localfs
+        config:
+          metadata_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/files_metadata.db
+            type: sqlite
+          storage_dir: /opt/app-root/src/.llama/distributions/rh/files
+      datasetio:
+      - provider_id: huggingface
+        provider_type: remote::huggingface
+        config:
+          kvstore:
+            db_path: /opt/app-root/src/.llama/distributions/rh/huggingface_datasetio.db
+            namespace: null
+            type: sqlite
+      scoring:
+      - provider_id: basic
+        provider_type: inline::basic
+        config: {}
+      - provider_id: llm-as-judge
+        provider_type: inline::llm-as-judge
+        config: {}
+      tool_runtime:
+      - provider_id: rag-runtime
+        provider_type: inline::rag-runtime
+        config: {}
+      - provider_id: model-context-protocol
+        provider_type: remote::model-context-protocol
+        config: {}
+    metadata_store:
+      type: sqlite
+      db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db
+    models:
+    - provider_id: sentence-transformers
+      model_id: granite-embedding-125m
+      provider_model_id: ibm-granite/granite-embedding-125m-english
+      model_type: embedding
+      metadata:
+        embedding_dimension: 768
+    - provider_id: vllm-inference-1
+      model_id: llama-32-3b-instruct
+      model_type: llm
+      metadata:
+        description: ""
+        display_name: llama-32-3b-instruct
+    shields: []
+    vector_dbs: []
+    datasets: []
+    scoring_fns: []
+    benchmarks: []
+    tool_groups:
+    - toolgroup_id: builtin::rag
+      provider_id: rag-runtime
+    # All 4 MCP Servers
+    - toolgroup_id: mcp::weather-data
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://mcp-weather.llamastack-full.svc.cluster.local:80/sse
+    - toolgroup_id: mcp::hr-tools
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://hr-mcp-server.llamastack-full.svc.cluster.local:8000/mcp
+    - toolgroup_id: mcp::jira-confluence
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://jira-mcp-server.llamastack-full.svc.cluster.local:8000/mcp
+    - toolgroup_id: mcp::github-tools
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://github-mcp-server.llamastack-full.svc.cluster.local:8000/mcp
+    server:
+      port: 8321
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lsd-genai-playground
+  namespace: llamastack-full
+  labels:
+    app: lsd-genai-playground
+    app.kubernetes.io/part-of: llamastack-full
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lsd-genai-playground
+  template:
+    metadata:
+      labels:
+        app: lsd-genai-playground
+    spec:
+      containers:
+      - name: llama-stack
+        image: quay.io/ai-on-openshift/llama-stack-rhoai-ubi9:0.2.2
+        ports:
+        - containerPort: 8321
+          name: http
+        volumeMounts:
+        - name: config
+          mountPath: /app-root/config
+        env:
+        - name: LLAMA_STACK_CONFIG
+          value: /app-root/config/run.yaml
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8321
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8321
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: llama-stack-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lsd-genai-playground-service
+  namespace: llamastack-full
+  labels:
+    app: lsd-genai-playground
+spec:
+  selector:
+    app: lsd-genai-playground
+  ports:
+  - port: 8321
+    targetPort: 8321
+    name: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: llamastack-full
+  namespace: llamastack-full
+  labels:
+    app: lsd-genai-playground
+spec:
+  to:
+    kind: Service
+    name: lsd-genai-playground-service
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

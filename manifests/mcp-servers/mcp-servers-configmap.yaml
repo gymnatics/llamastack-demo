@@ -1,0 +1,53 @@
+# MCP Servers ConfigMap - AI Asset Registration for OpenShift AI
+# This ConfigMap registers MCP servers in the GenAI Playground
+#
+# IMPORTANT: For the UI to show "Active" status, the MCP servers need to be
+# accessible from the browser. Use external routes for HR and Jira MCP servers.
+#
+# NOTE: The Weather MCP server is the colleague's OpenWeatherMap-based version
+# (quay.io/rh-aiservices-bu/mcp-weather:0.1.0-amd64), NOT the MongoDB-based version.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+data:
+  # Weather MCP Server - OpenWeatherMap-based (colleague's version)
+  # Uses SSE transport, internal URL works because it's proxied
+  Weather-MCP-Server: |
+    {
+      "url": "http://mcp-weather.my-first-model.svc.cluster.local:80/sse",
+      "description": "Weather data MCP server providing real-time weather information via OpenWeatherMap API. Tools: getforecast, get_current_weather.",
+      "transport": "sse"
+    }
+  
+  # GitHub MCP Server - Repository and code operations
+  # External service, requires GitHub authentication
+  GitHub-MCP-Server: |
+    {
+      "url": "https://api.githubcopilot.com/mcp",
+      "description": "GitHub integration for repository browsing, code search, issue management, and pull request operations. Requires GitHub authentication."
+    }
+  
+  # HR MCP Server - Employee and vacation management
+  # Uses external route for browser accessibility, streamableHttp transport
+  # NO TOKEN REQUIRED - uses mock data
+  HR-MCP-Server: |
+    {
+      "url": "https://hr-mcp-server-my-first-model.apps.ocp.f68xw.sandbox580.opentlc.com/mcp",
+      "description": "HR system integration for employee information, vacation balance checking, leave requests, job openings, and performance reviews. Tools: get_vacation_balance, create_vacation_request, get_employee_info, list_employees, list_job_openings, get_performance_review.",
+      "transport": "streamableHttp"
+    }
+  
+  # Jira/Confluence MCP Server - Project management
+  # Uses external route for browser accessibility, streamableHttp transport
+  # NO TOKEN REQUIRED - uses mock data
+  Jira-Confluence-MCP-Server: |
+    {
+      "url": "https://jira-mcp-server-my-first-model.apps.ocp.f68xw.sandbox580.opentlc.com/mcp",
+      "description": "Project management integration for Jira issue tracking and Confluence documentation. Tools: search_issues, get_issue_details, create_issue, search_confluence, get_page_content, list_projects, get_sprint_info.",
+      "transport": "streamableHttp"
+    }

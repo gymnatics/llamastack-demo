@@ -1,0 +1,280 @@
+# Phase 1: LlamaStack Distribution with Weather MCP Server Only
+# Namespace: llamastack-phase1
+#
+# This demonstrates the initial setup with a single MCP server
+#
+# Prerequisites:
+#   - Model serving endpoint accessible (we'll use the existing one in my-first-model)
+#   - Weather MCP server deployed
+#
+# To deploy:
+#   oc apply -f deploy-phase1.yaml
+#
+---
+# Weather MCP Server for Phase 1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-weather
+  namespace: llamastack-phase1
+  labels:
+    app: mcp-weather
+    app.kubernetes.io/part-of: llamastack-phase1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-weather
+  template:
+    metadata:
+      labels:
+        app: mcp-weather
+    spec:
+      containers:
+      - name: mcp-weather
+        image: quay.io/rh-aiservices-bu/mcp-weather:0.1.0-amd64
+        ports:
+        - containerPort: 3001
+          name: http
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-weather
+  namespace: llamastack-phase1
+  labels:
+    app: mcp-weather
+spec:
+  selector:
+    app: mcp-weather
+  ports:
+  - port: 80
+    targetPort: 3001
+    name: http
+---
+# LlamaStack ConfigMap for Phase 1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llama-stack-config
+  namespace: llamastack-phase1
+  labels:
+    app: lsd-genai-playground
+    app.kubernetes.io/part-of: llamastack-phase1
+data:
+  run.yaml: |
+    version: "2"
+    image_name: rh
+    apis:
+    - agents
+    - datasetio
+    - files
+    - inference
+    - safety
+    - scoring
+    - tool_runtime
+    - vector_io
+    providers:
+      inference:
+      - provider_id: sentence-transformers
+        provider_type: inline::sentence-transformers
+        config: {}
+      - provider_id: vllm-inference-1
+        provider_type: remote::vllm
+        config:
+          api_token: ${env.VLLM_API_TOKEN_1:=fake}
+          max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          url: http://llama-32-3b-instruct-predictor.my-first-model.svc.cluster.local:8080/v1
+      vector_io:
+      - provider_id: milvus
+        provider_type: inline::milvus
+        config:
+          db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
+          kvstore:
+            db_path: /opt/app-root/src/.llama/distributions/rh/milvus_registry.db
+            namespace: null
+            type: sqlite
+      agents:
+      - provider_id: meta-reference
+        provider_type: inline::meta-reference
+        config:
+          persistence_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/agents_store.db
+            namespace: null
+            type: sqlite
+          responses_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/responses_store.db
+            type: sqlite
+      eval: []
+      files:
+      - provider_id: meta-reference-files
+        provider_type: inline::localfs
+        config:
+          metadata_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/files_metadata.db
+            type: sqlite
+          storage_dir: /opt/app-root/src/.llama/distributions/rh/files
+      datasetio:
+      - provider_id: huggingface
+        provider_type: remote::huggingface
+        config:
+          kvstore:
+            db_path: /opt/app-root/src/.llama/distributions/rh/huggingface_datasetio.db
+            namespace: null
+            type: sqlite
+      scoring:
+      - provider_id: basic
+        provider_type: inline::basic
+        config: {}
+      - provider_id: llm-as-judge
+        provider_type: inline::llm-as-judge
+        config: {}
+      tool_runtime:
+      - provider_id: rag-runtime
+        provider_type: inline::rag-runtime
+        config: {}
+      - provider_id: model-context-protocol
+        provider_type: remote::model-context-protocol
+        config: {}
+    metadata_store:
+      type: sqlite
+      db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db
+    models:
+    - provider_id: sentence-transformers
+      model_id: granite-embedding-125m
+      provider_model_id: ibm-granite/granite-embedding-125m-english
+      model_type: embedding
+      metadata:
+        embedding_dimension: 768
+    - provider_id: vllm-inference-1
+      model_id: llama-32-3b-instruct
+      model_type: llm
+      metadata:
+        description: ""
+        display_name: llama-32-3b-instruct
+    shields: []
+    vector_dbs: []
+    datasets: []
+    scoring_fns: []
+    benchmarks: []
+    tool_groups:
+    - toolgroup_id: builtin::rag
+      provider_id: rag-runtime
+    # Phase 1: Weather MCP Server only
+    - toolgroup_id: mcp::weather-data
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://mcp-weather.llamastack-phase1.svc.cluster.local:80/sse
+    server:
+      port: 8321
+---
+# LlamaStack Deployment for Phase 1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lsd-genai-playground
+  namespace: llamastack-phase1
+  labels:
+    app: lsd-genai-playground
+    app.kubernetes.io/part-of: llamastack-phase1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lsd-genai-playground
+  template:
+    metadata:
+      labels:
+        app: lsd-genai-playground
+    spec:
+      containers:
+      - name: llama-stack
+        image: quay.io/ai-on-openshift/llama-stack-rhoai-ubi9:0.2.2
+        ports:
+        - containerPort: 8321
+          name: http
+        volumeMounts:
+        - name: config
+          mountPath: /app-root/config
+        env:
+        - name: LLAMA_STACK_CONFIG
+          value: /app-root/config/run.yaml
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8321
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8321
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: llama-stack-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lsd-genai-playground-service
+  namespace: llamastack-phase1
+  labels:
+    app: lsd-genai-playground
+spec:
+  selector:
+    app: lsd-genai-playground
+  ports:
+  - port: 8321
+    targetPort: 8321
+    name: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: llamastack-phase1
+  namespace: llamastack-phase1
+  labels:
+    app: lsd-genai-playground
+spec:
+  to:
+    kind: Service
+    name: lsd-genai-playground-service
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+# AI Assets ConfigMap for Phase 1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers-phase1
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/part-of: llamastack-phase1
+data:
+  Weather-MCP-Server-Phase1: |
+    {
+      "url": "http://mcp-weather.llamastack-phase1.svc.cluster.local:80/sse",
+      "description": "[Phase 1] Weather data MCP server providing real-time weather information via OpenWeatherMap API.",
+      "transport": "sse"
+    }

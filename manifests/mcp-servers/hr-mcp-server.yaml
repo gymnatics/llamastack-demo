@@ -1,0 +1,445 @@
+# HR MCP Server - Model Context Protocol server for HR tools
+# Based on: https://github.com/rh-ai-quickstart/llama-stack-mcp-server
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hr-mcp-server-code
+  namespace: my-first-model
+  labels:
+    app: hr-mcp-server
+    app.kubernetes.io/name: hr-mcp-server
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+data:
+  server.py: |
+    """
+    HR MCP Server - Model Context Protocol server for HR operations
+    Provides tools for vacation management, employee info, job listings, and performance reviews
+    """
+    from typing import Any, Dict, Optional
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+    import httpx
+    import os
+    import json
+
+    # Configuration
+    SERVER_NAME = os.getenv("MCP_SERVER_NAME", "hr-tools")
+    HR_API_URL = os.getenv("HR_API_URL", "http://hr-api:8080")
+
+    # Disable DNS rebinding protection for Kubernetes
+    transport_security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=False
+    )
+
+    # Initialize FastMCP server
+    mcp = FastMCP(SERVER_NAME, transport_security=transport_security)
+
+    async def call_hr_api(endpoint: str, method: str = "GET", data: dict = None) -> dict:
+        """Make a request to the HR API."""
+        async with httpx.AsyncClient() as client:
+            url = f"{HR_API_URL}{endpoint}"
+            if method == "GET":
+                response = await client.get(url, timeout=30)
+            else:
+                response = await client.post(url, json=data, timeout=30)
+            return response.json()
+
+    @mcp.tool()
+    async def get_vacation_balance(employee_id: str) -> str:
+        """Get the vacation and sick leave balance for an employee.
+        
+        Args:
+            employee_id: The employee ID (e.g., EMP001)
+        
+        Returns:
+            Vacation and sick leave balance information
+        """
+        try:
+            result = await call_hr_api(f"/api/v1/vacation/balance?employee_id={employee_id}")
+            if "error" in result:
+                return f"❌ Error: {result['error']}"
+            
+            return f"""📊 Vacation Balance for {result['name']} ({employee_id})
+    ═══════════════════════════════════════
+    🏖️  Annual Leave Balance: {result['vacation_balance']} days
+    🏥 Sick Leave Balance: {result['sick_leave_balance']} days
+    """
+        except Exception as e:
+            return f"❌ Error fetching vacation balance: {str(e)}"
+
+    @mcp.tool()
+    async def create_vacation_request(
+        employee_id: str,
+        start_date: str,
+        end_date: str,
+        leave_type: str = "annual",
+        days: int = 1
+    ) -> str:
+        """Create a new vacation request for an employee.
+        
+        Args:
+            employee_id: The employee ID (e.g., EMP001)
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            leave_type: Type of leave (annual, sick, personal)
+            days: Number of days requested
+        
+        Returns:
+            Confirmation of the vacation request
+        """
+        try:
+            data = {
+                "employee_id": employee_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "type": leave_type,
+                "days": days
+            }
+            result = await call_hr_api("/api/v1/vacation/request", method="POST", data=data)
+            
+            if "error" in result:
+                return f"❌ Error: {result['error']}"
+            
+            return f"""✅ Vacation Request Created Successfully!
+    ═══════════════════════════════════════
+    📋 Request ID: {result['id']}
+    👤 Employee: {employee_id}
+    📅 Dates: {start_date} to {end_date}
+    📝 Type: {leave_type}
+    📊 Days: {days}
+    🔄 Status: {result['status']}
+    
+    Your request has been submitted for approval.
+    """
+        except Exception as e:
+            return f"❌ Error creating vacation request: {str(e)}"
+
+    @mcp.tool()
+    async def get_employee_info(employee_id: str) -> str:
+        """Get detailed information about an employee.
+        
+        Args:
+            employee_id: The employee ID (e.g., EMP001)
+        
+        Returns:
+            Employee profile information
+        """
+        try:
+            result = await call_hr_api(f"/api/v1/employees?id={employee_id}")
+            if "error" in result:
+                return f"❌ Error: {result['error']}"
+            
+            return f"""👤 Employee Profile: {result['name']}
+    ═══════════════════════════════════════
+    🆔 ID: {result['id']}
+    📧 Email: {result['email']}
+    🏢 Department: {result['department']}
+    💼 Title: {result['title']}
+    👔 Manager ID: {result['manager_id']}
+    📅 Hire Date: {result['hire_date']}
+    🏖️  Vacation Balance: {result['vacation_balance']} days
+    🏥 Sick Leave: {result['sick_leave_balance']} days
+    """
+        except Exception as e:
+            return f"❌ Error fetching employee info: {str(e)}"
+
+    @mcp.tool()
+    async def list_employees(department: str = None) -> str:
+        """List all employees, optionally filtered by department.
+        
+        Args:
+            department: Optional department filter (Engineering, Product, HR)
+        
+        Returns:
+            List of employees
+        """
+        try:
+            result = await call_hr_api("/api/v1/employees")
+            if isinstance(result, dict) and "error" in result:
+                return f"❌ Error: {result['error']}"
+            
+            employees = result
+            if department:
+                employees = [e for e in employees if e['department'].lower() == department.lower()]
+            
+            output = f"👥 Employee Directory"
+            if department:
+                output += f" - {department}"
+            output += f"\n═══════════════════════════════════════\n"
+            output += f"Total: {len(employees)} employees\n\n"
+            
+            for emp in employees:
+                output += f"• {emp['name']} ({emp['id']})\n"
+                output += f"  {emp['title']} | {emp['department']}\n"
+                output += f"  📧 {emp['email']}\n\n"
+            
+            return output
+        except Exception as e:
+            return f"❌ Error listing employees: {str(e)}"
+
+    @mcp.tool()
+    async def list_job_openings(status: str = "open") -> str:
+        """List current job openings.
+        
+        Args:
+            status: Filter by status (open, closed, all)
+        
+        Returns:
+            List of job openings
+        """
+        try:
+            endpoint = "/api/v1/jobs"
+            if status and status != "all":
+                endpoint += f"?status={status}"
+            
+            result = await call_hr_api(endpoint)
+            if isinstance(result, dict) and "error" in result:
+                return f"❌ Error: {result['error']}"
+            
+            output = f"💼 Job Openings ({status})\n"
+            output += "═══════════════════════════════════════\n"
+            output += f"Total: {len(result)} positions\n\n"
+            
+            for job in result:
+                output += f"📌 {job['title']} ({job['id']})\n"
+                output += f"   🏢 Department: {job['department']}\n"
+                output += f"   📍 Location: {job['location']}\n"
+                output += f"   💰 Salary: {job['salary_range']}\n"
+                output += f"   📅 Posted: {job['posted_date']}\n\n"
+            
+            return output
+        except Exception as e:
+            return f"❌ Error listing jobs: {str(e)}"
+
+    @mcp.tool()
+    async def get_performance_review(employee_id: str) -> str:
+        """Get the latest performance review for an employee.
+        
+        Args:
+            employee_id: The employee ID (e.g., EMP001)
+        
+        Returns:
+            Performance review summary
+        """
+        try:
+            result = await call_hr_api(f"/api/v1/performance?employee_id={employee_id}")
+            if "error" in result:
+                return f"❌ Error: {result['error']}"
+            
+            strengths = "\n   • ".join(result.get('strengths', []))
+            improvements = "\n   • ".join(result.get('areas_for_improvement', []))
+            
+            return f"""📊 Performance Review: {employee_id}
+    ═══════════════════════════════════════
+    📅 Review Period: {result['review_period']}
+    ⭐ Rating: {result['rating']}/5.0
+    
+    📝 Summary:
+    {result['summary']}
+    
+    💪 Strengths:
+       • {strengths}
+    
+    📈 Areas for Improvement:
+       • {improvements}
+    """
+        except Exception as e:
+            return f"❌ Error fetching performance review: {str(e)}"
+
+    @mcp.tool()
+    async def get_vacation_requests(employee_id: str = None) -> str:
+        """Get vacation requests, optionally filtered by employee.
+        
+        Args:
+            employee_id: Optional employee ID filter
+        
+        Returns:
+            List of vacation requests
+        """
+        try:
+            endpoint = "/api/v1/vacation/requests"
+            if employee_id:
+                endpoint += f"?employee_id={employee_id}"
+            
+            result = await call_hr_api(endpoint)
+            if isinstance(result, dict) and "error" in result:
+                return f"❌ Error: {result['error']}"
+            
+            output = "📅 Vacation Requests"
+            if employee_id:
+                output += f" for {employee_id}"
+            output += "\n═══════════════════════════════════════\n"
+            output += f"Total: {len(result)} requests\n\n"
+            
+            status_emoji = {"approved": "✅", "pending": "⏳", "rejected": "❌"}
+            
+            for req in result:
+                emoji = status_emoji.get(req['status'], "❓")
+                output += f"{emoji} {req['id']}: {req['start_date']} to {req['end_date']}\n"
+                output += f"   Employee: {req['employee_id']} | Type: {req['type']} | Days: {req['days']}\n"
+                output += f"   Status: {req['status']}\n\n"
+            
+            return output
+        except Exception as e:
+            return f"❌ Error fetching vacation requests: {str(e)}"
+
+    if __name__ == "__main__":
+        import uvicorn
+        
+        print(f"""
+    ╔══════════════════════════════════════════════════════════════╗
+    ║           HR MCP Server                                      ║
+    ╠══════════════════════════════════════════════════════════════╣
+    ║  Server Name: {SERVER_NAME:<45} ║
+    ║  HR API URL:  {HR_API_URL:<45} ║
+    ║  DNS Rebinding Protection: Disabled (K8s compatible)        ║
+    ╚══════════════════════════════════════════════════════════════╝
+        """)
+        
+        print("🚀 Starting HR MCP server on 0.0.0.0:8000...")
+        
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host='0.0.0.0', port=8000)
+
+  requirements.txt: |
+    mcp>=1.0.0
+    fastmcp>=0.1.0
+    httpx>=0.25.0
+    uvicorn>=0.24.0
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hr-mcp-dockerfile
+  namespace: my-first-model
+  labels:
+    app: hr-mcp-server
+data:
+  Dockerfile: |
+    FROM python:3.11-slim
+    
+    WORKDIR /app
+    
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    
+    COPY server.py .
+    
+    EXPOSE 8000
+    
+    CMD ["python", "server.py"]
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: hr-mcp-server
+  namespace: my-first-model
+  labels:
+    app: hr-mcp-server
+spec:
+  lookupPolicy:
+    local: true
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: hr-mcp-server
+  namespace: my-first-model
+  labels:
+    app: hr-mcp-server
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: hr-mcp-server:latest
+  triggers: []
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hr-mcp-server
+  namespace: my-first-model
+  labels:
+    app: hr-mcp-server
+    app.kubernetes.io/name: hr-mcp-server
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hr-mcp-server
+  template:
+    metadata:
+      labels:
+        app: hr-mcp-server
+    spec:
+      containers:
+      - name: hr-mcp-server
+        image: image-registry.openshift-image-registry.svc:5000/my-first-model/hr-mcp-server:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: MCP_SERVER_NAME
+          value: "hr-tools"
+        - name: HR_API_URL
+          value: "http://hr-api:8080"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        # Note: FastMCP doesn't have a /health endpoint, use TCP socket probe
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          failureThreshold: 5
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hr-mcp-server
+  namespace: my-first-model
+  labels:
+    app: hr-mcp-server
+spec:
+  selector:
+    app: hr-mcp-server
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hr-mcp-server
+  namespace: my-first-model
+  labels:
+    app: hr-mcp-server
+spec:
+  to:
+    kind: Service
+    name: hr-mcp-server
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Allow

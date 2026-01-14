@@ -1,0 +1,451 @@
+# Phase 2: LlamaStack Distribution with Weather + HR MCP Servers
+# Namespace: llamastack-phase2
+#
+# This demonstrates adding a second MCP server to the distribution
+#
+# To deploy:
+#   oc apply -f deploy-phase2.yaml
+#
+---
+# Weather MCP Server for Phase 2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-weather
+  namespace: llamastack-phase2
+  labels:
+    app: mcp-weather
+    app.kubernetes.io/part-of: llamastack-phase2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-weather
+  template:
+    metadata:
+      labels:
+        app: mcp-weather
+    spec:
+      containers:
+      - name: mcp-weather
+        image: quay.io/rh-aiservices-bu/mcp-weather:0.1.0-amd64
+        ports:
+        - containerPort: 3001
+          name: http
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-weather
+  namespace: llamastack-phase2
+  labels:
+    app: mcp-weather
+spec:
+  selector:
+    app: mcp-weather
+  ports:
+  - port: 80
+    targetPort: 3001
+    name: http
+---
+# HR API Backend for Phase 2
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hr-api-data
+  namespace: llamastack-phase2
+  labels:
+    app: hr-api
+data:
+  employees.json: |
+    {
+      "employees": [
+        {"id": "EMP001", "name": "Alice Johnson", "department": "Engineering", "title": "Senior Developer", "email": "alice@company.com", "manager": "EMP005", "vacation_balance": 15, "hire_date": "2020-03-15"},
+        {"id": "EMP002", "name": "Bob Smith", "department": "Marketing", "title": "Marketing Manager", "email": "bob@company.com", "manager": "EMP006", "vacation_balance": 12, "hire_date": "2019-07-01"},
+        {"id": "EMP003", "name": "Carol Williams", "department": "Engineering", "title": "DevOps Engineer", "email": "carol@company.com", "manager": "EMP005", "vacation_balance": 18, "hire_date": "2018-11-20"},
+        {"id": "EMP004", "name": "David Brown", "department": "HR", "title": "HR Specialist", "email": "david@company.com", "manager": "EMP007", "vacation_balance": 10, "hire_date": "2021-01-10"},
+        {"id": "EMP005", "name": "Eva Martinez", "department": "Engineering", "title": "Engineering Director", "email": "eva@company.com", "manager": "EMP008", "vacation_balance": 20, "hire_date": "2017-05-01"}
+      ],
+      "job_openings": [
+        {"id": "JOB001", "title": "Senior Software Engineer", "department": "Engineering", "location": "Remote", "salary_range": "$120k-$160k"},
+        {"id": "JOB002", "title": "Product Manager", "department": "Product", "location": "New York", "salary_range": "$130k-$170k"},
+        {"id": "JOB003", "title": "Data Scientist", "department": "Data", "location": "San Francisco", "salary_range": "$140k-$180k"}
+      ],
+      "vacation_requests": []
+    }
+---
+# HR MCP Server for Phase 2
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hr-mcp-code
+  namespace: llamastack-phase2
+  labels:
+    app: hr-mcp-server
+data:
+  server.py: |
+    import json
+    import os
+    from datetime import datetime
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    mcp = FastMCP("hr-tools", transport_security=transport_security)
+
+    # Load HR data
+    HR_DATA = json.loads(os.getenv("HR_DATA", '{"employees":[],"job_openings":[],"vacation_requests":[]}'))
+
+    @mcp.tool()
+    def get_vacation_balance(employee_id: str) -> str:
+        """Get vacation balance for an employee."""
+        for emp in HR_DATA.get("employees", []):
+            if emp["id"].upper() == employee_id.upper():
+                return f"Employee {emp['name']} ({emp['id']}) has {emp['vacation_balance']} vacation days remaining."
+        return f"Employee {employee_id} not found."
+
+    @mcp.tool()
+    def get_employee_info(employee_id: str) -> str:
+        """Get detailed information about an employee."""
+        for emp in HR_DATA.get("employees", []):
+            if emp["id"].upper() == employee_id.upper():
+                return f"""Employee Information:
+    Name: {emp['name']}
+    ID: {emp['id']}
+    Department: {emp['department']}
+    Title: {emp['title']}
+    Email: {emp['email']}
+    Hire Date: {emp['hire_date']}
+    Vacation Balance: {emp['vacation_balance']} days"""
+        return f"Employee {employee_id} not found."
+
+    @mcp.tool()
+    def list_employees(department: str = "") -> str:
+        """List all employees, optionally filtered by department."""
+        employees = HR_DATA.get("employees", [])
+        if department:
+            employees = [e for e in employees if e["department"].lower() == department.lower()]
+        if not employees:
+            return f"No employees found{' in ' + department if department else ''}."
+        result = f"Employees{' in ' + department if department else ''}:\n"
+        for emp in employees:
+            result += f"  - {emp['name']} ({emp['id']}) - {emp['title']}\n"
+        return result
+
+    @mcp.tool()
+    def list_job_openings() -> str:
+        """List all current job openings."""
+        jobs = HR_DATA.get("job_openings", [])
+        if not jobs:
+            return "No job openings available."
+        result = "Current Job Openings:\n"
+        for job in jobs:
+            result += f"  - {job['title']} ({job['id']})\n    Department: {job['department']}, Location: {job['location']}\n    Salary: {job['salary_range']}\n"
+        return result
+
+    @mcp.tool()
+    def create_vacation_request(employee_id: str, start_date: str, end_date: str, reason: str = "") -> str:
+        """Create a vacation request for an employee."""
+        for emp in HR_DATA.get("employees", []):
+            if emp["id"].upper() == employee_id.upper():
+                request_id = f"VAC{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                return f"Vacation request {request_id} created for {emp['name']} from {start_date} to {end_date}. Status: Pending approval."
+        return f"Employee {employee_id} not found."
+
+    if __name__ == "__main__":
+        import uvicorn
+        print("Starting HR MCP Server on port 8000...")
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host='0.0.0.0', port=8000)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hr-mcp-server
+  namespace: llamastack-phase2
+  labels:
+    app: hr-mcp-server
+    app.kubernetes.io/part-of: llamastack-phase2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hr-mcp-server
+  template:
+    metadata:
+      labels:
+        app: hr-mcp-server
+    spec:
+      containers:
+      - name: hr-mcp-server
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          export HOME=/tmp
+          pip install --user mcp uvicorn
+          export PATH=/tmp/.local/bin:$PATH
+          python /app/server.py
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: HR_DATA
+          valueFrom:
+            configMapKeyRef:
+              name: hr-api-data
+              key: employees.json
+        volumeMounts:
+        - name: code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 90
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+      volumes:
+      - name: code
+        configMap:
+          name: hr-mcp-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hr-mcp-server
+  namespace: llamastack-phase2
+  labels:
+    app: hr-mcp-server
+spec:
+  selector:
+    app: hr-mcp-server
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+---
+# LlamaStack ConfigMap for Phase 2
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llama-stack-config
+  namespace: llamastack-phase2
+  labels:
+    app: lsd-genai-playground
+    app.kubernetes.io/part-of: llamastack-phase2
+data:
+  run.yaml: |
+    version: "2"
+    image_name: rh
+    apis:
+    - agents
+    - datasetio
+    - files
+    - inference
+    - safety
+    - scoring
+    - tool_runtime
+    - vector_io
+    providers:
+      inference:
+      - provider_id: sentence-transformers
+        provider_type: inline::sentence-transformers
+        config: {}
+      - provider_id: vllm-inference-1
+        provider_type: remote::vllm
+        config:
+          api_token: ${env.VLLM_API_TOKEN_1:=fake}
+          max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+          tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+          url: http://llama-32-3b-instruct-predictor.my-first-model.svc.cluster.local:8080/v1
+      vector_io:
+      - provider_id: milvus
+        provider_type: inline::milvus
+        config:
+          db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
+          kvstore:
+            db_path: /opt/app-root/src/.llama/distributions/rh/milvus_registry.db
+            namespace: null
+            type: sqlite
+      agents:
+      - provider_id: meta-reference
+        provider_type: inline::meta-reference
+        config:
+          persistence_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/agents_store.db
+            namespace: null
+            type: sqlite
+          responses_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/responses_store.db
+            type: sqlite
+      eval: []
+      files:
+      - provider_id: meta-reference-files
+        provider_type: inline::localfs
+        config:
+          metadata_store:
+            db_path: /opt/app-root/src/.llama/distributions/rh/files_metadata.db
+            type: sqlite
+          storage_dir: /opt/app-root/src/.llama/distributions/rh/files
+      datasetio:
+      - provider_id: huggingface
+        provider_type: remote::huggingface
+        config:
+          kvstore:
+            db_path: /opt/app-root/src/.llama/distributions/rh/huggingface_datasetio.db
+            namespace: null
+            type: sqlite
+      scoring:
+      - provider_id: basic
+        provider_type: inline::basic
+        config: {}
+      - provider_id: llm-as-judge
+        provider_type: inline::llm-as-judge
+        config: {}
+      tool_runtime:
+      - provider_id: rag-runtime
+        provider_type: inline::rag-runtime
+        config: {}
+      - provider_id: model-context-protocol
+        provider_type: remote::model-context-protocol
+        config: {}
+    metadata_store:
+      type: sqlite
+      db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db
+    models:
+    - provider_id: sentence-transformers
+      model_id: granite-embedding-125m
+      provider_model_id: ibm-granite/granite-embedding-125m-english
+      model_type: embedding
+      metadata:
+        embedding_dimension: 768
+    - provider_id: vllm-inference-1
+      model_id: llama-32-3b-instruct
+      model_type: llm
+      metadata:
+        description: ""
+        display_name: llama-32-3b-instruct
+    shields: []
+    vector_dbs: []
+    datasets: []
+    scoring_fns: []
+    benchmarks: []
+    tool_groups:
+    - toolgroup_id: builtin::rag
+      provider_id: rag-runtime
+    # Phase 2: Weather + HR MCP Servers
+    - toolgroup_id: mcp::weather-data
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://mcp-weather.llamastack-phase2.svc.cluster.local:80/sse
+    - toolgroup_id: mcp::hr-tools
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://hr-mcp-server.llamastack-phase2.svc.cluster.local:8000/mcp
+    server:
+      port: 8321
+---
+# LlamaStack Deployment for Phase 2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lsd-genai-playground
+  namespace: llamastack-phase2
+  labels:
+    app: lsd-genai-playground
+    app.kubernetes.io/part-of: llamastack-phase2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lsd-genai-playground
+  template:
+    metadata:
+      labels:
+        app: lsd-genai-playground
+    spec:
+      containers:
+      - name: llama-stack
+        image: quay.io/ai-on-openshift/llama-stack-rhoai-ubi9:0.2.2
+        ports:
+        - containerPort: 8321
+          name: http
+        volumeMounts:
+        - name: config
+          mountPath: /app-root/config
+        env:
+        - name: LLAMA_STACK_CONFIG
+          value: /app-root/config/run.yaml
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8321
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8321
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: llama-stack-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lsd-genai-playground-service
+  namespace: llamastack-phase2
+  labels:
+    app: lsd-genai-playground
+spec:
+  selector:
+    app: lsd-genai-playground
+  ports:
+  - port: 8321
+    targetPort: 8321
+    name: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: llamastack-phase2
+  namespace: llamastack-phase2
+  labels:
+    app: lsd-genai-playground
+spec:
+  to:
+    kind: Service
+    name: lsd-genai-playground-service
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

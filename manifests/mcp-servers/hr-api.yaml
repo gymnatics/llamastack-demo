@@ -1,0 +1,365 @@
+# HR Enterprise API - Backend service for HR MCP Server
+# Based on: https://github.com/rh-ai-quickstart/llama-stack-mcp-server
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hr-api-data
+  namespace: my-first-model
+  labels:
+    app: hr-api
+    app.kubernetes.io/name: hr-api
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+data:
+  employees.json: |
+    {
+      "employees": [
+        {
+          "id": "EMP001",
+          "name": "Alice Johnson",
+          "email": "alice.johnson@company.com",
+          "department": "Engineering",
+          "title": "Senior Software Engineer",
+          "manager_id": "EMP010",
+          "hire_date": "2021-03-15",
+          "vacation_balance": 15,
+          "sick_leave_balance": 10
+        },
+        {
+          "id": "EMP002",
+          "name": "Bob Smith",
+          "email": "bob.smith@company.com",
+          "department": "Engineering",
+          "title": "DevOps Engineer",
+          "manager_id": "EMP010",
+          "hire_date": "2022-06-01",
+          "vacation_balance": 12,
+          "sick_leave_balance": 8
+        },
+        {
+          "id": "EMP003",
+          "name": "Carol Williams",
+          "email": "carol.williams@company.com",
+          "department": "Product",
+          "title": "Product Manager",
+          "manager_id": "EMP011",
+          "hire_date": "2020-09-20",
+          "vacation_balance": 18,
+          "sick_leave_balance": 10
+        },
+        {
+          "id": "EMP004",
+          "name": "David Brown",
+          "email": "david.brown@company.com",
+          "department": "Engineering",
+          "title": "Junior Developer",
+          "manager_id": "EMP001",
+          "hire_date": "2024-01-10",
+          "vacation_balance": 10,
+          "sick_leave_balance": 5
+        },
+        {
+          "id": "EMP005",
+          "name": "Eva Martinez",
+          "email": "eva.martinez@company.com",
+          "department": "HR",
+          "title": "HR Specialist",
+          "manager_id": "EMP012",
+          "hire_date": "2023-04-15",
+          "vacation_balance": 14,
+          "sick_leave_balance": 7
+        },
+        {
+          "id": "EMP010",
+          "name": "Frank Chen",
+          "email": "frank.chen@company.com",
+          "department": "Engineering",
+          "title": "Engineering Manager",
+          "manager_id": "EMP020",
+          "hire_date": "2019-01-10",
+          "vacation_balance": 20,
+          "sick_leave_balance": 10
+        },
+        {
+          "id": "EMP011",
+          "name": "Grace Lee",
+          "email": "grace.lee@company.com",
+          "department": "Product",
+          "title": "Director of Product",
+          "manager_id": "EMP020",
+          "hire_date": "2018-06-01",
+          "vacation_balance": 22,
+          "sick_leave_balance": 10
+        },
+        {
+          "id": "EMP012",
+          "name": "Henry Wilson",
+          "email": "henry.wilson@company.com",
+          "department": "HR",
+          "title": "HR Director",
+          "manager_id": "EMP020",
+          "hire_date": "2017-03-15",
+          "vacation_balance": 25,
+          "sick_leave_balance": 10
+        }
+      ],
+      "vacation_requests": [
+        {
+          "id": "VR001",
+          "employee_id": "EMP001",
+          "start_date": "2026-02-10",
+          "end_date": "2026-02-14",
+          "type": "annual",
+          "status": "approved",
+          "days": 5
+        },
+        {
+          "id": "VR002",
+          "employee_id": "EMP002",
+          "start_date": "2026-01-20",
+          "end_date": "2026-01-21",
+          "type": "annual",
+          "status": "pending",
+          "days": 2
+        }
+      ],
+      "job_openings": [
+        {
+          "id": "JOB001",
+          "title": "Senior Backend Engineer",
+          "department": "Engineering",
+          "location": "Remote",
+          "salary_range": "$120,000 - $160,000",
+          "status": "open",
+          "posted_date": "2026-01-05"
+        },
+        {
+          "id": "JOB002",
+          "title": "Product Designer",
+          "department": "Product",
+          "location": "New York",
+          "salary_range": "$90,000 - $120,000",
+          "status": "open",
+          "posted_date": "2026-01-10"
+        },
+        {
+          "id": "JOB003",
+          "title": "DevOps Lead",
+          "department": "Engineering",
+          "location": "San Francisco",
+          "salary_range": "$140,000 - $180,000",
+          "status": "open",
+          "posted_date": "2026-01-08"
+        }
+      ],
+      "performance_reviews": [
+        {
+          "employee_id": "EMP001",
+          "review_period": "2025-H2",
+          "rating": 4.5,
+          "summary": "Excellent performance. Led critical infrastructure migration project.",
+          "strengths": ["Technical leadership", "Problem solving", "Mentoring"],
+          "areas_for_improvement": ["Documentation", "Cross-team communication"]
+        },
+        {
+          "employee_id": "EMP002",
+          "review_period": "2025-H2",
+          "rating": 4.0,
+          "summary": "Strong contributor to CI/CD improvements.",
+          "strengths": ["Automation", "Reliability", "Quick learner"],
+          "areas_for_improvement": ["Project estimation", "Stakeholder management"]
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hr-api
+  namespace: my-first-model
+  labels:
+    app: hr-api
+    app.kubernetes.io/name: hr-api
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hr-api
+  template:
+    metadata:
+      labels:
+        app: hr-api
+    spec:
+      containers:
+      - name: hr-api
+        image: python:3.11-slim
+        command: ["python", "-c"]
+        args:
+        - |
+          import json
+          import os
+          from http.server import HTTPServer, BaseHTTPRequestHandler
+          from urllib.parse import urlparse, parse_qs
+          import uuid
+          from datetime import datetime
+
+          # Load data
+          with open('/data/employees.json') as f:
+              data = json.load(f)
+
+          employees = {e['id']: e for e in data['employees']}
+          vacation_requests = data['vacation_requests']
+          job_openings = data['job_openings']
+          performance_reviews = {r['employee_id']: r for r in data['performance_reviews']}
+
+          class HRAPIHandler(BaseHTTPRequestHandler):
+              def _send_json(self, data, status=200):
+                  self.send_response(status)
+                  self.send_header('Content-Type', 'application/json')
+                  self.send_header('Access-Control-Allow-Origin', '*')
+                  self.end_headers()
+                  self.wfile.write(json.dumps(data).encode())
+
+              def do_GET(self):
+                  parsed = urlparse(self.path)
+                  path = parsed.path
+                  params = parse_qs(parsed.query)
+
+                  if path == '/health':
+                      self._send_json({'status': 'healthy'})
+                  elif path == '/api/v1/employees':
+                      emp_id = params.get('id', [None])[0]
+                      if emp_id:
+                          emp = employees.get(emp_id)
+                          if emp:
+                              self._send_json(emp)
+                          else:
+                              self._send_json({'error': 'Employee not found'}, 404)
+                      else:
+                          self._send_json(list(employees.values()))
+                  elif path == '/api/v1/vacation/balance':
+                      emp_id = params.get('employee_id', [None])[0]
+                      if emp_id and emp_id in employees:
+                          emp = employees[emp_id]
+                          self._send_json({
+                              'employee_id': emp_id,
+                              'name': emp['name'],
+                              'vacation_balance': emp['vacation_balance'],
+                              'sick_leave_balance': emp['sick_leave_balance']
+                          })
+                      else:
+                          self._send_json({'error': 'Employee not found'}, 404)
+                  elif path == '/api/v1/vacation/requests':
+                      emp_id = params.get('employee_id', [None])[0]
+                      if emp_id:
+                          reqs = [r for r in vacation_requests if r['employee_id'] == emp_id]
+                          self._send_json(reqs)
+                      else:
+                          self._send_json(vacation_requests)
+                  elif path == '/api/v1/jobs':
+                      status = params.get('status', [None])[0]
+                      if status:
+                          jobs = [j for j in job_openings if j['status'] == status]
+                          self._send_json(jobs)
+                      else:
+                          self._send_json(job_openings)
+                  elif path == '/api/v1/performance':
+                      emp_id = params.get('employee_id', [None])[0]
+                      if emp_id:
+                          review = performance_reviews.get(emp_id)
+                          if review:
+                              self._send_json(review)
+                          else:
+                              self._send_json({'error': 'No review found'}, 404)
+                      else:
+                          self._send_json(list(performance_reviews.values()))
+                  else:
+                      self._send_json({'error': 'Not found'}, 404)
+
+              def do_POST(self):
+                  parsed = urlparse(self.path)
+                  path = parsed.path
+                  
+                  content_length = int(self.headers.get('Content-Length', 0))
+                  body = json.loads(self.rfile.read(content_length)) if content_length else {}
+
+                  if path == '/api/v1/vacation/request':
+                      emp_id = body.get('employee_id')
+                      if not emp_id or emp_id not in employees:
+                          self._send_json({'error': 'Invalid employee_id'}, 400)
+                          return
+                      
+                      new_request = {
+                          'id': f'VR{str(uuid.uuid4())[:8].upper()}',
+                          'employee_id': emp_id,
+                          'start_date': body.get('start_date'),
+                          'end_date': body.get('end_date'),
+                          'type': body.get('type', 'annual'),
+                          'status': 'pending',
+                          'days': body.get('days', 1),
+                          'created_at': datetime.now().isoformat()
+                      }
+                      vacation_requests.append(new_request)
+                      self._send_json(new_request, 201)
+                  else:
+                      self._send_json({'error': 'Not found'}, 404)
+
+              def do_OPTIONS(self):
+                  self.send_response(200)
+                  self.send_header('Access-Control-Allow-Origin', '*')
+                  self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                  self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+                  self.end_headers()
+
+              def log_message(self, format, *args):
+                  print(f"[HR-API] {args[0]}")
+
+          print("Starting HR API server on port 8080...")
+          server = HTTPServer(('0.0.0.0', 8080), HRAPIHandler)
+          server.serve_forever()
+        ports:
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: hr-data
+          mountPath: /data
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: hr-data
+        configMap:
+          name: hr-api-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hr-api
+  namespace: my-first-model
+  labels:
+    app: hr-api
+spec:
+  selector:
+    app: hr-api
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8080
+    targetPort: 8080

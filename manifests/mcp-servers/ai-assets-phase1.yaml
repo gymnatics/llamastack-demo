@@ -1,0 +1,20 @@
+# Phase 1: AI Assets ConfigMap with 1 MCP Server (Weather only)
+# This registers only the Weather MCP server in OpenShift AI
+#
+# To apply:
+#   oc apply -f ai-assets-phase1.yaml
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+data:
+  Weather-MCP-Server: |
+    {
+      "url": "http://mcp-weather.my-first-model.svc.cluster.local:80/sse",
+      "description": "Weather data MCP server providing real-time weather information via OpenWeatherMap API. Tools: getforecast, get_current_weather.",
+      "transport": "sse"
+    }

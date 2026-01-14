@@ -1,0 +1,133 @@
+# Full Configuration: LlamaStack with ALL 4 MCP Servers
+# Weather + HR + Jira/Confluence + GitHub
+#
+# To apply this configuration:
+#   oc create configmap llama-stack-config --from-file=run.yaml=llama-stack-config-full.yaml -n my-first-model --dry-run=client -o yaml | oc apply -f -
+#   oc delete pod -l app=lsd-genai-playground -n my-first-model
+#
+version: "2"
+image_name: rh
+apis:
+- agents
+- datasetio
+- files
+- inference
+- safety
+- scoring
+- tool_runtime
+- vector_io
+providers:
+  inference:
+  - provider_id: sentence-transformers
+    provider_type: inline::sentence-transformers
+    config: {}
+  - provider_id: vllm-inference-1
+    provider_type: remote::vllm
+    config:
+      api_token: ${env.VLLM_API_TOKEN_1:=fake}
+      max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+      tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+      url: http://llama-32-3b-instruct-predictor.my-first-model.svc.cluster.local:8080/v1
+  vector_io:
+  - provider_id: milvus
+    provider_type: inline::milvus
+    config:
+      db_path: /opt/app-root/src/.llama/distributions/rh/milvus.db
+      kvstore:
+        db_path: /opt/app-root/src/.llama/distributions/rh/milvus_registry.db
+        namespace: null
+        type: sqlite
+  agents:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      persistence_store:
+        db_path: /opt/app-root/src/.llama/distributions/rh/agents_store.db
+        namespace: null
+        type: sqlite
+      responses_store:
+        db_path: /opt/app-root/src/.llama/distributions/rh/responses_store.db
+        type: sqlite
+  eval: []
+  files:
+  - provider_id: meta-reference-files
+    provider_type: inline::localfs
+    config:
+      metadata_store:
+        db_path: /opt/app-root/src/.llama/distributions/rh/files_metadata.db
+        type: sqlite
+      storage_dir: /opt/app-root/src/.llama/distributions/rh/files
+  datasetio:
+  - provider_id: huggingface
+    provider_type: remote::huggingface
+    config:
+      kvstore:
+        db_path: /opt/app-root/src/.llama/distributions/rh/huggingface_datasetio.db
+        namespace: null
+        type: sqlite
+  scoring:
+  - provider_id: basic
+    provider_type: inline::basic
+    config: {}
+  - provider_id: llm-as-judge
+    provider_type: inline::llm-as-judge
+    config: {}
+  tool_runtime:
+  - provider_id: rag-runtime
+    provider_type: inline::rag-runtime
+    config: {}
+  - provider_id: model-context-protocol
+    provider_type: remote::model-context-protocol
+    config: {}
+metadata_store:
+  type: sqlite
+  db_path: /opt/app-root/src/.llama/distributions/rh/inference_store.db
+models:
+- provider_id: sentence-transformers
+  model_id: granite-embedding-125m
+  provider_model_id: ibm-granite/granite-embedding-125m-english
+  model_type: embedding
+  metadata:
+    embedding_dimension: 768
+- provider_id: vllm-inference-1
+  model_id: llama-32-3b-instruct
+  model_type: llm
+  metadata:
+    description: ""
+    display_name: llama-32-3b-instruct
+shields: []
+vector_dbs: []
+datasets: []
+scoring_fns: []
+benchmarks: []
+tool_groups:
+# Built-in RAG tools
+- toolgroup_id: builtin::rag
+  provider_id: rag-runtime
+
+# MCP Server 1: Weather (OpenWeatherMap)
+- toolgroup_id: mcp::weather-data
+  provider_id: model-context-protocol
+  mcp_endpoint:
+    uri: http://mcp-weather.my-first-model.svc.cluster.local:80/sse
+
+# MCP Server 2: HR Tools
+- toolgroup_id: mcp::hr-tools
+  provider_id: model-context-protocol
+  mcp_endpoint:
+    uri: http://hr-mcp-server.my-first-model.svc.cluster.local:8000/mcp
+
+# MCP Server 3: Jira/Confluence
+- toolgroup_id: mcp::jira-confluence
+  provider_id: model-context-protocol
+  mcp_endpoint:
+    uri: http://jira-mcp-server.my-first-model.svc.cluster.local:8000/mcp
+
+# MCP Server 4: GitHub
+- toolgroup_id: mcp::github-tools
+  provider_id: model-context-protocol
+  mcp_endpoint:
+    uri: http://github-mcp-server.my-first-model.svc.cluster.local:8000/mcp
+
+server:
+  port: 8321
