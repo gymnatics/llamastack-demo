@@ -1,0 +1,13 @@
+# Trusted CA Bundle ConfigMap
+# Required for LlamaStack TLS verification
+# This is a placeholder - OpenShift will inject the actual CA bundle
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: odh-trusted-ca-bundle
+  labels:
+    app: lsd-genai-playground
+data:
+  ca-bundle.crt: |
+    # Placeholder CA bundle
+    # OpenShift will inject the actual CA certificates

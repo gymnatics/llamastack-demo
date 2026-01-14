@@ -734,6 +734,18 @@ data:
     server:
       port: 8321
 ---
+# Trusted CA Bundle ConfigMap (required for LlamaStack)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: odh-trusted-ca-bundle
+  namespace: llamastack-full
+  labels:
+    app: lsd-genai-playground
+data:
+  ca-bundle.crt: |
+    # Placeholder - OpenShift will inject the actual CA bundle
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -752,18 +764,75 @@ spec:
       labels:
         app: lsd-genai-playground
     spec:
+      initContainers:
+      - name: ca-bundle-init
+        image: registry.redhat.io/rhoai/odh-llama-stack-core-rhel9@sha256:13ec5c9b96a9ca8c0a1fcc0568cf6f893478742d28d3b1381f073b9bdafb3320
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          #!/bin/sh
+          set -e
+          output_file="/tmp/ca-bundle/ca-bundle.crt"
+          source_dir="/tmp/ca-source"
+          > "$output_file"
+          for key in "ca-bundle.crt"; do
+              file_path="$source_dir/$key"
+              if [ -f "$file_path" ]; then
+                  cat "$file_path" >> "$output_file"
+                  echo >> "$output_file"
+              fi
+          done
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /tmp/ca-source
+          name: ca-bundle-source
+          readOnly: true
+        - mountPath: /tmp/ca-bundle
+          name: ca-bundle
       containers:
       - name: llama-stack
         image: registry.redhat.io/rhoai/odh-llama-stack-core-rhel9@sha256:13ec5c9b96a9ca8c0a1fcc0568cf6f893478742d28d3b1381f073b9bdafb3320
+        command:
+        - /bin/sh
+        - -c
+        - llama stack run /etc/llama-stack/run.yaml
         ports:
         - containerPort: 8321
           name: http
-        volumeMounts:
-        - name: config
-          mountPath: /app-root/config
         env:
-        - name: LLAMA_STACK_CONFIG
-          value: /app-root/config/run.yaml
+        - name: HF_HOME
+          value: "/opt/app-root/src/.llama/distributions/rh/"
+        - name: SSL_CERT_FILE
+          value: "/etc/ssl/certs/ca-bundle.crt"
+        - name: VLLM_TLS_VERIFY
+          value: "false"
+        - name: MILVUS_DB_PATH
+          value: "~/.llama/milvus.db"
+        - name: FMS_ORCHESTRATOR_URL
+          value: "http://localhost"
+        - name: VLLM_MAX_TOKENS
+          value: "4096"
+        - name: VLLM_API_TOKEN_1
+          value: "fake"
+        - name: LLAMA_STACK_CONFIG_DIR
+          value: "/opt/app-root/src/.llama/distributions/rh/"
+        volumeMounts:
+        - name: lls-storage
+          mountPath: /opt/app-root/src/.llama/distributions/rh/
+        - name: user-config
+          mountPath: /etc/llama-stack/
+          readOnly: true
+        - name: ca-bundle
+          mountPath: /etc/ssl/certs/ca-bundle.crt
+          subPath: ca-bundle.crt
+          readOnly: true
         resources:
           requests:
             memory: "512Mi"
@@ -784,9 +853,18 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 10
       volumes:
-      - name: config
+      - name: lls-storage
+        emptyDir: {}
+      - name: ca-bundle
+        emptyDir: {}
+      - name: ca-bundle-source
+        configMap:
+          name: odh-trusted-ca-bundle
+          defaultMode: 420
+      - name: user-config
         configMap:
           name: llama-stack-config
+          defaultMode: 420
 ---
 apiVersion: v1
 kind: Service

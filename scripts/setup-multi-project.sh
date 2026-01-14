@@ -109,59 +109,16 @@ deploy_team() {
         return 1
     fi
     
-    # Create CA bundle configmap (required for LlamaStack)
-    oc create configmap odh-trusted-ca-bundle -n "$ns" \
-        --from-literal=ca-bundle.crt="# Placeholder CA bundle" \
-        --dry-run=client -o yaml 2>/dev/null | oc apply -f - >/dev/null 2>&1
-    
     # Replace namespace patterns and ensure model endpoint points to source namespace
+    # The manifests already include proper LlamaStack deployment config with:
+    # - CA bundle configmap
+    # - Init container for CA bundle
+    # - Correct env vars and volume mounts
     sed -e "s/llamastack-$phase/$ns/g" \
         -e "s/my-first-model/$ns/g" \
         "$manifest_file" | \
         sed "s|\(llama-32-3b-instruct-predictor\)\.$ns\.|\1.$NS_MODEL.|g" | \
         oc apply -f - 2>&1 | grep -cE "created|configured|unchanged" | xargs -I {} echo "   {} resources applied"
-    
-    # Patch the LlamaStack deployment with correct env vars and volume mounts
-    echo -e "   Patching LlamaStack deployment..."
-    oc patch deployment lsd-genai-playground -n "$ns" --type='json' -p='[
-        {"op": "replace", "path": "/spec/template/spec/containers/0/command", "value": ["/bin/sh", "-c", "llama stack run /etc/llama-stack/run.yaml"]},
-        {"op": "replace", "path": "/spec/template/spec/containers/0/env", "value": [
-            {"name": "HF_HOME", "value": "/opt/app-root/src/.llama/distributions/rh/"},
-            {"name": "SSL_CERT_FILE", "value": "/etc/ssl/certs/ca-bundle.crt"},
-            {"name": "VLLM_TLS_VERIFY", "value": "false"},
-            {"name": "MILVUS_DB_PATH", "value": "~/.llama/milvus.db"},
-            {"name": "FMS_ORCHESTRATOR_URL", "value": "http://localhost"},
-            {"name": "VLLM_MAX_TOKENS", "value": "4096"},
-            {"name": "VLLM_API_TOKEN_1", "value": "fake"},
-            {"name": "LLAMA_STACK_CONFIG_DIR", "value": "/opt/app-root/src/.llama/distributions/rh/"}
-        ]},
-        {"op": "replace", "path": "/spec/template/spec/containers/0/volumeMounts", "value": [
-            {"name": "lls-storage", "mountPath": "/opt/app-root/src/.llama/distributions/rh/"},
-            {"name": "user-config", "mountPath": "/etc/llama-stack/", "readOnly": true},
-            {"name": "ca-bundle", "mountPath": "/etc/ssl/certs/ca-bundle.crt", "subPath": "ca-bundle.crt", "readOnly": true}
-        ]},
-        {"op": "replace", "path": "/spec/template/spec/volumes", "value": [
-            {"name": "lls-storage", "emptyDir": {}},
-            {"name": "ca-bundle", "emptyDir": {}},
-            {"name": "ca-bundle-source", "configMap": {"name": "odh-trusted-ca-bundle", "defaultMode": 420}},
-            {"name": "user-config", "configMap": {"name": "llama-stack-config", "defaultMode": 420}}
-        ]}
-    ]' 2>/dev/null || echo -e "   ${YELLOW}(patch skipped - deployment may need manual update)${NC}"
-    
-    # Add init container for CA bundle
-    oc patch deployment lsd-genai-playground -n "$ns" --type='json' -p='[
-        {"op": "add", "path": "/spec/template/spec/initContainers", "value": [{
-            "name": "ca-bundle-init",
-            "image": "registry.redhat.io/rhoai/odh-llama-stack-core-rhel9@sha256:13ec5c9b96a9ca8c0a1fcc0568cf6f893478742d28d3b1381f073b9bdafb3320",
-            "imagePullPolicy": "IfNotPresent",
-            "command": ["/bin/sh", "-c", "cp /tmp/ca-source/ca-bundle.crt /tmp/ca-bundle/ 2>/dev/null || echo \"# empty\" > /tmp/ca-bundle/ca-bundle.crt"],
-            "securityContext": {"allowPrivilegeEscalation": false, "capabilities": {"drop": ["ALL"]}, "runAsNonRoot": true},
-            "volumeMounts": [
-                {"mountPath": "/tmp/ca-source", "name": "ca-bundle-source", "readOnly": true},
-                {"mountPath": "/tmp/ca-bundle", "name": "ca-bundle"}
-            ]
-        }]}
-    ]' 2>/dev/null || true
     
     echo -e "   ${GREEN}✓ Done${NC}"
     echo ""
