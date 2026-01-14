@@ -318,8 +318,19 @@ oc get route llamastack-multi-mcp-demo -n my-first-model
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `LLAMASTACK_URL` | LlamaStack service URL | Auto-detected |
-| `MODEL_ID` | Model identifier | `qwen3-4b` |
+| `MODEL_ID` | Model identifier | Auto-detected from LlamaStack |
 | `ADMIN_MODE` | Enable admin features | `false` |
+
+### Model Auto-Detection
+
+The frontend automatically detects available models from LlamaStack:
+
+1. Queries `GET /v1/models` endpoint
+2. Filters for LLM models (excludes embedding models)
+3. Shows a dropdown selector with available models
+4. Falls back to text input if models can't be fetched
+
+**No configuration needed** - the model is auto-detected when the frontend starts!
 
 ---
 

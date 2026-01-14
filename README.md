@@ -44,7 +44,7 @@ oc project my-demo
 ./scripts/deploy.sh status
 
 # Add HR MCP
-./scripts/deploy.sh add-hr
+./scripts/deploy.sh add hr
 
 # List available tools
 ./scripts/deploy.sh tools
@@ -87,7 +87,7 @@ llamastack-demo/
 ├── mcp/
 │   └── weather-mongodb/        # MongoDB Weather MCP source
 ├── scripts/
-│   └── deploy-demo.sh          # Main deployment script
+│   └── deploy.sh               # Main deployment script
 └── README.md
 ```
 
@@ -149,7 +149,7 @@ oc delete pod -l app=lsd-genai-playground -n my-first-model
 ### 3. Verify
 
 ```bash
-./scripts/deploy-demo.sh tools
+./scripts/deploy.sh tools
 ```
 
 ---
@@ -162,6 +162,7 @@ The demo includes a Streamlit-based UI with:
 - **Tool Discovery** - See all available tools grouped by server
 - **User Preferences** - Users can enable/disable servers
 - **Admin Mode** - Admins can add/remove servers (set `ADMIN_MODE=true`)
+- **Model Auto-Detection** - Automatically detects available LLM models from LlamaStack
 
 ### Deploy Frontend
 
