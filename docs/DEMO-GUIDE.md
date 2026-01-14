@@ -40,8 +40,8 @@ cd /Users/dayeo/LlamaStack-MCP-Demo
 ### 3. Reset Demo Environment
 
 ```bash
-# Delete AI Assets ConfigMap (so you can re-register during demo)
-oc delete configmap gen-ai-aa-mcp-servers -n redhat-ods-applications
+# Apply 3 MCP servers to AI Assets (leave Weather for live demo)
+oc apply -f manifests/ai-assets/gen-ai-aa-mcp-servers-3.yaml
 
 # Apply Phase 1 LlamaStack config (vLLM + Weather only)
 oc apply -f manifests/llamastack/llama-stack-config-phase1.yaml
@@ -86,9 +86,10 @@ oc get pods -n my-first-model | grep -E "mcp|hr-|jira-|github-"
 
 ### Pre-Recording Checklist
 
-- [ ] AI Assets ConfigMap deleted
+- [ ] AI Assets has 3 MCPs (HR, Jira, GitHub) - Weather will be added live
 - [ ] LlamaStack on Phase 1 (1 model, 1 MCP)
 - [ ] All 4 MCP server pods running
+- [ ] Both notebooks uploaded to Workbench
 - [ ] Terminal in correct directory
 - [ ] Browser tabs ready (OpenShift AI, Frontend)
 
@@ -139,36 +140,50 @@ cat manifests/mcp-servers/hr-mcp-server.yaml | head -40
 
 > 🎬 **Duration: ~2 min**
 > 
-> **Goal:** Register MCP servers in OpenShift AI so they appear in the dashboard
+> **Goal:** Show registering an MCP server in OpenShift AI (Weather - the 4th one)
 
-### Commands to Run
+### Before This Step
+
+3 MCP servers are already registered (HR, Jira, GitHub) from pre-recording setup.
+
+### Show Existing AI Assets First
+
+1. Open **OpenShift AI Dashboard**
+2. Navigate to: **Settings** → **AI asset endpoints**
+3. Show the **3 existing MCP servers** (HR, Jira, GitHub)
+
+### What to Say
+
+> "We already have 3 MCP servers registered - HR, Jira, and GitHub.
+> Let me show you how to add a new one - the Weather MCP server."
+
+### Commands to Run (Add Weather)
 
 ```bash
-# Apply the AI Assets ConfigMap
-oc apply -f manifests/ai-assets/gen-ai-aa-mcp-servers.yaml
+# Add Weather MCP to the existing 3
+oc apply -f manifests/ai-assets/gen-ai-aa-mcp-servers-weather.yaml
 ```
 
 **Expected Output:**
 ```
-configmap/gen-ai-aa-mcp-servers created
+configmap/gen-ai-aa-mcp-servers configured
 ```
 
 ### What to Say
 
-> "Now let's register these MCP servers as AI Assets in OpenShift AI.
-> This ConfigMap tells OpenShift AI about our MCP servers so they appear in the dashboard."
+> "I'm applying a ConfigMap that adds the Weather MCP server.
+> This is how admins register new MCP servers - just update the YAML."
 
 ### Show in Browser
 
-1. Open **OpenShift AI Dashboard**: `https://rhods-dashboard-redhat-ods-applications.apps.YOUR_CLUSTER`
-2. Navigate to: **Settings** → **AI asset endpoints**
-3. Show the 4 MCP servers now appearing
+1. **Refresh** the AI asset endpoints page
+2. Show **Weather MCP Server** now appearing (total 4)
 
-### Optional: Show the ConfigMap Content
+### Optional: Show the YAML
 
 ```bash
-# Show what we just applied
-cat manifests/ai-assets/gen-ai-aa-mcp-servers.yaml
+# Show the Weather entry we just added
+cat manifests/ai-assets/gen-ai-aa-mcp-servers-weather.yaml | grep -A6 "Weather-MCP"
 ```
 
 ---

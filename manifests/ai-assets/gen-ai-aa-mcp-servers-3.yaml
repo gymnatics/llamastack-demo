@@ -1,0 +1,32 @@
+# AI Asset Endpoints - 3 MCP Servers (Pre-recording setup)
+# Apply BEFORE recording - leaves 1 slot for live demo
+#
+# Usage:
+#   oc apply -f manifests/ai-assets/gen-ai-aa-mcp-servers-3.yaml
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+data:
+  HR-MCP-Server: |
+    {
+      "url": "http://hr-mcp-server.my-first-model.svc.cluster.local:8000/mcp",
+      "description": "HR system MCP server for employee management. Tools: get_vacation_balance, create_vacation_request, get_employee_info, list_employees, list_job_openings, get_performance_review.",
+      "transport": "streamable-http"
+    }
+  Jira-Confluence-MCP-Server: |
+    {
+      "url": "http://jira-mcp-server.my-first-model.svc.cluster.local:8000/mcp",
+      "description": "Jira/Confluence MCP server for project management. Tools: search_issues, get_issue_details, create_issue, search_confluence, get_page_content, list_projects, get_sprint_info.",
+      "transport": "streamable-http"
+    }
+  GitHub-MCP-Server: |
+    {
+      "url": "http://github-mcp-server.my-first-model.svc.cluster.local:8000/mcp",
+      "description": "GitHub MCP server for repository operations. Tools: search_repositories, get_repository, list_issues, create_issue, search_code, get_user.",
+      "transport": "streamable-http"
+    }
