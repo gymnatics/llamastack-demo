@@ -104,12 +104,15 @@ oc project my-demo
 ./scripts/deploy.sh phase2      # Deploy Weather + HR MCPs
 ./scripts/deploy.sh full        # Deploy all 4 MCP servers
 
-# Manage MCP servers (without redeploying)
-./scripts/deploy.sh add-hr      # Add HR MCP to existing setup
-./scripts/deploy.sh add-all     # Add all MCPs to existing setup
-./scripts/deploy.sh reset       # Reset to Weather only
+# Add specific MCP servers
+./scripts/deploy.sh add weather # Set to Weather only
+./scripts/deploy.sh add hr      # Add HR MCP (Weather + HR)
+./scripts/deploy.sh add jira    # Add Jira MCP (all MCPs)
+./scripts/deploy.sh add github  # Add GitHub MCP (all MCPs)
+./scripts/deploy.sh add all     # Add all 4 MCP servers
 
-# Info commands
+# Other commands
+./scripts/deploy.sh reset       # Reset to Weather only
 ./scripts/deploy.sh status      # Show pods and routes
 ./scripts/deploy.sh tools       # List available tools
 ./scripts/deploy.sh config      # Show current MCP config

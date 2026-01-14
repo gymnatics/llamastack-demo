@@ -121,23 +121,54 @@ except:
         oc get configmap llama-stack-config -n "$NS" -o jsonpath='{.data.run\.yaml}' 2>/dev/null | grep -A4 "toolgroup_id: mcp::" || echo "No MCP toolgroups configured"
         ;;
     
-    add-hr)
-        echo -e "${BLUE}▶ Adding HR MCP to LlamaStack...${NC}"
-        sed "s/$SOURCE_NS/$NS/g" "$MANIFEST_DIR/llamastack/llama-stack-config-phase2.yaml" > /tmp/llama-config.yaml
+    add)
+        MCP_TO_ADD="${2:-}"
+        if [ -z "$MCP_TO_ADD" ]; then
+            echo -e "${YELLOW}Usage: $0 add <mcp-server>${NC}"
+            echo ""
+            echo "Available MCP servers:"
+            echo "  weather   - Weather forecast (getforecast)"
+            echo "  hr        - HR tools (vacation, employees, jobs)"
+            echo "  jira      - Jira/Confluence (issues, projects)"
+            echo "  github    - GitHub (repos, issues, code search)"
+            echo "  all       - All 4 MCP servers"
+            echo ""
+            echo "Examples:"
+            echo "  $0 add hr"
+            echo "  $0 add jira"
+            echo "  $0 add all"
+            exit 0
+        fi
+        
+        case "$MCP_TO_ADD" in
+            weather)
+                echo -e "${BLUE}▶ Setting LlamaStack to Weather MCP only...${NC}"
+                CONFIG_FILE="$MANIFEST_DIR/llamastack/llama-stack-config-phase1.yaml"
+                ;;
+            hr)
+                echo -e "${BLUE}▶ Adding HR MCP to LlamaStack (Weather + HR)...${NC}"
+                CONFIG_FILE="$MANIFEST_DIR/llamastack/llama-stack-config-phase2.yaml"
+                ;;
+            jira|github)
+                echo -e "${BLUE}▶ Adding $MCP_TO_ADD MCP to LlamaStack (requires full config)...${NC}"
+                CONFIG_FILE="$MANIFEST_DIR/llamastack/llama-stack-config-full.yaml"
+                ;;
+            all)
+                echo -e "${BLUE}▶ Adding all MCPs to LlamaStack...${NC}"
+                CONFIG_FILE="$MANIFEST_DIR/llamastack/llama-stack-config-full.yaml"
+                ;;
+            *)
+                echo -e "${RED}Unknown MCP server: $MCP_TO_ADD${NC}"
+                echo "Available: weather, hr, jira, github, all"
+                exit 1
+                ;;
+        esac
+        
+        sed "s/$SOURCE_NS/$NS/g" "$CONFIG_FILE" > /tmp/llama-config.yaml
         oc create configmap llama-stack-config --from-file=run.yaml=/tmp/llama-config.yaml -n "$NS" --dry-run=client -o yaml | oc apply -f -
         oc delete pod -l app=lsd-genai-playground -n "$NS" 2>/dev/null || true
         rm /tmp/llama-config.yaml
-        echo -e "${GREEN}✅ HR MCP added! LlamaStack restarting...${NC}"
-        echo -e "   Wait ~30s then run: $0 tools"
-        ;;
-    
-    add-all)
-        echo -e "${BLUE}▶ Adding all MCPs to LlamaStack...${NC}"
-        sed "s/$SOURCE_NS/$NS/g" "$MANIFEST_DIR/llamastack/llama-stack-config-full.yaml" > /tmp/llama-config.yaml
-        oc create configmap llama-stack-config --from-file=run.yaml=/tmp/llama-config.yaml -n "$NS" --dry-run=client -o yaml | oc apply -f -
-        oc delete pod -l app=lsd-genai-playground -n "$NS" 2>/dev/null || true
-        rm /tmp/llama-config.yaml
-        echo -e "${GREEN}✅ All MCPs added! LlamaStack restarting...${NC}"
+        echo -e "${GREEN}✅ MCP configuration updated! LlamaStack restarting...${NC}"
         echo -e "   Wait ~30s then run: $0 tools"
         ;;
     
@@ -159,19 +190,23 @@ except:
         echo "  phase2    Deploy Weather + HR MCPs"
         echo "  full      Deploy all 4 MCP servers"
         echo ""
-        echo -e "${CYAN}Manage Commands:${NC}"
-        echo "  add-hr    Add HR MCP to existing LlamaStack"
-        echo "  add-all   Add all MCPs to existing LlamaStack"
-        echo "  reset     Reset to Weather MCP only"
+        echo -e "${CYAN}Add MCP Servers:${NC}"
+        echo "  add weather   Set to Weather only"
+        echo "  add hr        Add HR MCP (Weather + HR)"
+        echo "  add jira      Add Jira MCP (all MCPs)"
+        echo "  add github    Add GitHub MCP (all MCPs)"
+        echo "  add all       Add all 4 MCP servers"
         echo ""
-        echo -e "${CYAN}Info Commands:${NC}"
+        echo -e "${CYAN}Other Commands:${NC}"
+        echo "  reset     Reset to Weather MCP only"
         echo "  status    Show pods and routes"
         echo "  tools     List available tools"
         echo "  config    Show current MCP configuration"
         echo ""
         echo -e "${CYAN}Examples:${NC}"
         echo "  ./deploy.sh phase1      # Start with Weather only"
-        echo "  ./deploy.sh add-hr      # Add HR MCP"
+        echo "  ./deploy.sh add hr      # Add HR MCP"
+        echo "  ./deploy.sh add jira    # Add Jira MCP"
         echo "  ./deploy.sh tools       # See available tools"
         echo "  ./deploy.sh reset       # Go back to Weather only"
         echo ""

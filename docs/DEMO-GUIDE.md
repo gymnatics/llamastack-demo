@@ -39,8 +39,11 @@ oc project my-demo-namespace
 | `./scripts/deploy.sh phase1` | Deploy Weather MCP only |
 | `./scripts/deploy.sh phase2` | Deploy Weather + HR MCPs |
 | `./scripts/deploy.sh full` | Deploy all 4 MCP servers |
-| `./scripts/deploy.sh add-hr` | Add HR MCP to existing setup |
-| `./scripts/deploy.sh add-all` | Add all MCPs to existing setup |
+| `./scripts/deploy.sh add weather` | Set to Weather only |
+| `./scripts/deploy.sh add hr` | Add HR MCP (Weather + HR) |
+| `./scripts/deploy.sh add jira` | Add Jira MCP (all MCPs) |
+| `./scripts/deploy.sh add github` | Add GitHub MCP (all MCPs) |
+| `./scripts/deploy.sh add all` | Add all 4 MCP servers |
 | `./scripts/deploy.sh reset` | Reset to Weather only |
 | `./scripts/deploy.sh status` | Show pods and routes |
 | `./scripts/deploy.sh tools` | List available tools |
@@ -58,12 +61,12 @@ oc project my-demo-namespace
 ./scripts/deploy.sh tools          # Shows: getforecast
 
 # 2. Add HR MCP
-./scripts/deploy.sh add-hr
+./scripts/deploy.sh add hr
 sleep 30                           # Wait for restart
 ./scripts/deploy.sh tools          # Shows: getforecast + HR tools
 
-# 3. Add all MCPs
-./scripts/deploy.sh add-all
+# 3. Add Jira MCP (adds all remaining MCPs)
+./scripts/deploy.sh add jira
 sleep 30
 ./scripts/deploy.sh tools          # Shows: all tools
 
@@ -324,8 +327,7 @@ oc create configmap llama-stack-config \
 | `./scripts/deploy.sh phase1` | Deploy Weather MCP only |
 | `./scripts/deploy.sh phase2` | Deploy Weather + HR MCPs |
 | `./scripts/deploy.sh full` | Deploy all 4 MCP servers |
-| `./scripts/deploy.sh add-hr` | Add HR MCP to existing setup |
-| `./scripts/deploy.sh add-all` | Add all MCPs to existing setup |
+| `./scripts/deploy.sh add <mcp>` | Add specific MCP (weather, hr, jira, github, all) |
 | `./scripts/deploy.sh reset` | Reset to Weather only |
 | `./scripts/deploy.sh status` | Show pods and routes |
 | `./scripts/deploy.sh tools` | List available tools |
