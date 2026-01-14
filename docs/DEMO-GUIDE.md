@@ -66,9 +66,18 @@ In an enterprise, different teams need different tools:
 - **HR Team** → Weather + HR tools
 - **Dev Team** → All tools (Weather, HR, Jira, GitHub)
 
-This demo shows how admins can configure different MCP server access for different teams by switching the LlamaStack configuration.
+This demo offers **two approaches**:
 
-### Demo: Team Configuration Switching
+| Approach | Description | Best For |
+|----------|-------------|----------|
+| **Option A: Config Switching** | Single namespace, switch configs | Quick demos, resource-constrained |
+| **Option B: Multi-Namespace** | Separate namespaces per team | Enterprise demos, true isolation |
+
+---
+
+### Option A: Config Switching (Single Namespace)
+
+Switch LlamaStack configuration within the same namespace to simulate different team access.
 
 ```bash
 # Show current configuration
@@ -79,18 +88,74 @@ This demo shows how admins can configure different MCP server access for differe
 sleep 30
 ./scripts/deploy.sh tools
 
-# Switch to HR Team config (Weather + HR - 10 tools)
+# Switch to HR Team config (Weather + HR - 8 tools)
 ./scripts/deploy.sh multi hr
 sleep 30
 ./scripts/deploy.sh tools
 
-# Switch to Dev Team config (All 4 MCPs - 20+ tools)
+# Switch to Dev Team config (All 4 MCPs - 17 tools)
 ./scripts/deploy.sh multi dev
 sleep 30
 ./scripts/deploy.sh tools
 ```
 
-### Demo Walkthrough
+**Pros:** Fast, simple, resource-efficient
+**Cons:** Only one config active at a time
+
+---
+
+### Option B: Multi-Namespace (True Isolation)
+
+Create separate namespaces with their own LlamaStack instances.
+
+```bash
+# Setup all team namespaces (creates team-ops, team-hr, team-dev)
+./scripts/deploy.sh multi setup
+
+# Wait for pods to start (~60 seconds)
+sleep 60
+
+# Check status of all teams
+./scripts/deploy.sh multi status
+```
+
+**Verify each team has different tools:**
+
+```bash
+# Check team-ops (Weather only - 3 tools)
+oc exec -n team-ops deployment/lsd-genai-playground -- \
+  curl -s http://localhost:8321/v1/tools | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(f'team-ops: {len(d.get(\"data\",[]))} tools')"
+
+# Check team-hr (Weather + HR - 8 tools)
+oc exec -n team-hr deployment/lsd-genai-playground -- \
+  curl -s http://localhost:8321/v1/tools | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(f'team-hr: {len(d.get(\"data\",[]))} tools')"
+
+# Check team-dev (All MCPs - 17 tools)
+oc exec -n team-dev deployment/lsd-genai-playground -- \
+  curl -s http://localhost:8321/v1/tools | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(f'team-dev: {len(d.get(\"data\",[]))} tools')"
+```
+
+**Expected output:**
+```
+team-ops: 3 tools
+team-hr: 8 tools
+team-dev: 17 tools
+```
+
+**Cleanup:**
+```bash
+./scripts/deploy.sh multi cleanup
+```
+
+**Pros:** True namespace isolation, side-by-side comparison, realistic enterprise setup
+**Cons:** More resources (3x LlamaStack pods), longer setup time
+
+---
+
+### Demo Walkthrough (Option A - Config Switching)
 
 #### Step 1: Start with Ops Team (Minimal Tools)
 
@@ -103,8 +168,8 @@ sleep 30
 **Expected output:**
 ```
 Total: 3 tools
-
-mcp::weather-data:
+  - insert_into_memory
+  - knowledge_search
   - getforecast
 ```
 
@@ -120,18 +185,15 @@ mcp::weather-data:
 
 **Expected output:**
 ```
-Total: 10 tools
-
-mcp::weather-data:
+Total: 8 tools
+  - insert_into_memory
+  - knowledge_search
   - getforecast
-
-mcp::hr-tools:
   - get_vacation_balance
   - get_employee_info
   - list_employees
   - list_job_openings
   - create_vacation_request
-  - get_performance_review
 ```
 
 **Demo point:** "HR team has Weather + HR tools - they can check vacation balances and employee info."
@@ -146,9 +208,12 @@ mcp::hr-tools:
 
 **Expected output:**
 ```
-Total: 20+ tools
-
-mcp::weather-data, mcp::hr-tools, mcp::jira-confluence, mcp::github-tools
+Total: 17 tools
+  - Weather tools (1)
+  - HR tools (5)
+  - Jira tools (5)
+  - GitHub tools (4)
+  - RAG tools (2)
 ```
 
 **Demo point:** "Dev team has all tools - full development workflow with Jira and GitHub integration."
@@ -168,31 +233,35 @@ mcp::weather-data, mcp::hr-tools, mcp::jira-confluence, mcp::github-tools
 3. **Easy to Change**: Just update the config and restart LlamaStack
 4. **Audit Trail**: All changes are in version-controlled YAML files
 5. **No Code Changes**: Users don't need to modify their applications
+6. **Namespace Isolation**: Option B provides true multi-tenancy
 
 ### Quick Commands Reference
 
 ```bash
-# Show current configuration
-./scripts/deploy.sh multi status
+# === Option A: Config Switching ===
+./scripts/deploy.sh multi status   # Show current config
+./scripts/deploy.sh multi ops      # Ops: Weather only (3 tools)
+./scripts/deploy.sh multi hr       # HR: Weather + HR (8 tools)
+./scripts/deploy.sh multi dev      # Dev: All 4 MCPs (17 tools)
 
-# Switch to different team configs
-./scripts/deploy.sh multi ops    # Ops: Weather only (3 tools)
-./scripts/deploy.sh multi hr     # HR: Weather + HR (10 tools)
-./scripts/deploy.sh multi dev    # Dev: All 4 MCPs (20+ tools)
+# === Option B: Multi-Namespace ===
+./scripts/deploy.sh multi setup    # Create team-ops, team-hr, team-dev
+./scripts/deploy.sh multi status   # Check all teams
+./scripts/deploy.sh multi cleanup  # Remove all team namespaces
 
-# Or use the deploy.sh add commands
-./scripts/deploy.sh add weather  # Same as 'multi ops'
-./scripts/deploy.sh add hr       # Same as 'multi hr'
-./scripts/deploy.sh add all      # Same as 'multi dev'
+# === Alternative: deploy.sh add commands ===
+./scripts/deploy.sh add weather    # Same as 'multi ops'
+./scripts/deploy.sh add hr         # Same as 'multi hr'
+./scripts/deploy.sh add all        # Same as 'multi dev'
 ```
 
 ### Team Configurations
 
-| Team | Config | MCP Servers | Tools |
-|------|--------|-------------|-------|
-| Ops | phase1 | Weather | 3 |
-| HR | phase2 | Weather + HR | 10 |
-| Dev | full | Weather + HR + Jira + GitHub | 20+ |
+| Team | Namespace | MCP Servers | Tools |
+|------|-----------|-------------|-------|
+| Ops | team-ops | Weather | 3 |
+| HR | team-hr | Weather + HR | 8 |
+| Dev | team-dev | Weather + HR + Jira + GitHub | 17 |
 
 ---
 

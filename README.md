@@ -96,26 +96,53 @@ llamastack-demo/
 
 ## 🏢 Multi-Project Demo (Key Feature)
 
-Show how different teams get different MCP server access by switching configurations:
+Show how different teams get different MCP server access. **Two options available:**
+
+### Option A: Config Switching (Quick Demo)
+
+Switch configurations within the same namespace:
 
 ```bash
-# Show current configuration
-./scripts/deploy.sh multi status
-
-# Switch between team configurations:
 ./scripts/deploy.sh multi ops    # Ops Team: Weather only (3 tools)
-./scripts/deploy.sh multi hr     # HR Team: Weather + HR (10 tools)
-./scripts/deploy.sh multi dev    # Dev Team: All 4 MCPs (20+ tools)
+./scripts/deploy.sh multi hr     # HR Team: Weather + HR (8 tools)
+./scripts/deploy.sh multi dev    # Dev Team: All 4 MCPs (17 tools)
 
 # Wait 30s after each switch, then check tools
 ./scripts/deploy.sh tools
 ```
+
+### Option B: Multi-Namespace (Enterprise Demo)
+
+Create separate namespaces with isolated LlamaStack instances:
+
+```bash
+# Setup all team namespaces
+./scripts/deploy.sh multi setup
+
+# Wait ~60s for pods to start
+sleep 60
+
+# Check each team's tools
+oc exec -n team-ops deployment/lsd-genai-playground -- curl -s http://localhost:8321/v1/tools | python3 -c "import sys,json; print(f'team-ops: {len(json.load(sys.stdin).get(\"data\",[]))} tools')"
+oc exec -n team-hr deployment/lsd-genai-playground -- curl -s http://localhost:8321/v1/tools | python3 -c "import sys,json; print(f'team-hr: {len(json.load(sys.stdin).get(\"data\",[]))} tools')"
+oc exec -n team-dev deployment/lsd-genai-playground -- curl -s http://localhost:8321/v1/tools | python3 -c "import sys,json; print(f'team-dev: {len(json.load(sys.stdin).get(\"data\",[]))} tools')"
+
+# Cleanup when done
+./scripts/deploy.sh multi cleanup
+```
+
+| Team | Namespace | MCP Servers | Tools |
+|------|-----------|-------------|-------|
+| Ops | team-ops | Weather | 3 |
+| HR | team-hr | Weather + HR | 8 |
+| Dev | team-dev | All 4 MCPs | 17 |
 
 **Demo talking points:**
 - Admins control MCP access via YAML configuration
 - Different teams get different tool sets based on their needs
 - Easy to add/remove MCP servers without code changes
 - All configuration is declarative and auditable
+- Option B shows true namespace isolation for enterprise scenarios
 
 ---
 
