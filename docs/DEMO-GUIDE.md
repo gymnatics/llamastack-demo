@@ -1,6 +1,6 @@
 # LlamaStack MCP Demo Guide
 
-This guide shows how to demonstrate adding and removing MCP servers from a LlamaStack distribution.
+This guide shows how to demonstrate adding and removing MCP servers from a LlamaStack distribution on OpenShift AI.
 
 ---
 
@@ -8,9 +8,12 @@ This guide shows how to demonstrate adding and removing MCP servers from a Llama
 
 1. [Quick Start](#quick-start)
 2. [Demo Flow](#demo-flow)
-3. [Manual Steps (For Demo)](#manual-steps-for-demo)
-4. [Available MCP Servers](#available-mcp-servers)
-5. [YAML Reference](#yaml-reference)
+3. [Demo Scenarios](#demo-scenarios)
+4. [Manual Steps (For Demo)](#manual-steps-for-demo)
+5. [Available MCP Servers](#available-mcp-servers)
+6. [Frontend UI](#frontend-ui)
+7. [YAML Reference](#yaml-reference)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -58,20 +61,76 @@ oc project my-demo-namespace
 ```bash
 # 1. Start with Weather only
 ./scripts/deploy.sh phase1
-./scripts/deploy.sh tools          # Shows: getforecast
+./scripts/deploy.sh tools          # Shows: 3 tools (getforecast)
 
 # 2. Add HR MCP
 ./scripts/deploy.sh add hr
 sleep 30                           # Wait for restart
-./scripts/deploy.sh tools          # Shows: getforecast + HR tools
+./scripts/deploy.sh tools          # Shows: 10 tools (Weather + HR)
 
-# 3. Add Jira MCP (adds all remaining MCPs)
-./scripts/deploy.sh add jira
+# 3. Add all MCPs
+./scripts/deploy.sh add all
 sleep 30
-./scripts/deploy.sh tools          # Shows: all tools
+./scripts/deploy.sh tools          # Shows: 23 tools (all 4 MCPs)
 
 # 4. Reset back
 ./scripts/deploy.sh reset
+sleep 30
+./scripts/deploy.sh tools          # Back to 3 tools
+```
+
+---
+
+## Demo Scenarios
+
+Use these scenarios to demonstrate the AI agent capabilities:
+
+### Scenario 1: Weather Query
+```
+User: "What's the weather forecast for today?"
+Agent: Uses Weather MCP → getforecast tool
+Expected: Returns weather forecast data
+```
+
+### Scenario 2: HR Self-Service
+```
+User: "Check the vacation balance for employee EMP001"
+Agent: Uses HR MCP → get_vacation_balance tool
+Expected: Returns vacation days remaining
+
+User: "List all job openings"
+Agent: Uses HR MCP → list_job_openings tool
+Expected: Returns available positions
+```
+
+### Scenario 3: Developer Workflow
+```
+User: "Search for open bugs in the DEMO project"
+Agent: Uses Jira MCP → search_issues tool
+Expected: Returns list of bug tickets
+
+User: "Find documentation about API authentication"
+Agent: Uses Jira MCP → search_confluence tool
+Expected: Returns relevant Confluence pages
+```
+
+### Scenario 4: GitHub Integration
+```
+User: "Search for popular Kubernetes repositories"
+Agent: Uses GitHub MCP → search_repositories tool
+Expected: Returns list of repos with stars
+
+User: "List open issues in the kubernetes/kubernetes repo"
+Agent: Uses GitHub MCP → list_issues tool
+Expected: Returns recent issues
+```
+
+### Scenario 5: Multi-Tool Query
+```
+User: "I need to plan a team offsite. Check employee EMP001's vacation balance 
+       and find weather forecasts for potential locations."
+Agent: Uses HR MCP + Weather MCP together
+Expected: Returns vacation balance AND weather data
 ```
 
 ---
@@ -229,13 +288,38 @@ oc exec deployment/lsd-genai-playground -n my-first-model -- \
 
 There are two Weather MCP servers available:
 
-1. **Weather (Simple)** - OpenWeatherMap-based, single tool (`getforecast`)
-2. **Weather (MongoDB)** - MongoDB-backed with rich data and multiple tools
+1. **Weather (Simple)** - OpenWeatherMap-based, single tool (`getforecast`) - **Used in this demo**
+2. **Weather (MongoDB)** - MongoDB-backed with rich data and multiple tools - Available in `mcp/weather-mongodb/`
 
-To deploy the MongoDB Weather MCP:
+---
+
+## Frontend UI
+
+The demo includes an enhanced Streamlit frontend with multi-MCP support.
+
+### Features
+- **Multi-MCP Display** - Shows all connected MCP servers
+- **Tool Discovery** - Lists all available tools grouped by server
+- **User Toggle** - Users can enable/disable MCP servers for their session
+- **Admin Mode** - Admins can add/remove MCP servers (set `ADMIN_MODE=true`)
+
+### Accessing the Frontend
+
 ```bash
-./scripts/deploy-demo.sh deploy-weather-mongodb
+# Get the frontend route
+oc get route -n my-first-model | grep frontend
+
+# Or use the LlamaStack demo route
+oc get route llamastack-multi-mcp-demo -n my-first-model
 ```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LLAMASTACK_URL` | LlamaStack service URL | Auto-detected |
+| `MODEL_ID` | Model identifier | `qwen3-4b` |
+| `ADMIN_MODE` | Enable admin features | `false` |
 
 ---
 
