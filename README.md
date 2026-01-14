@@ -31,17 +31,21 @@ A comprehensive demonstration of LlamaStack with multiple Model Context Protocol
 git clone https://github.com/gymnatics/llamastack-demo.git
 cd llamastack-demo
 
-# Show current configuration
-./scripts/deploy-demo.sh config
+# Login and switch to your namespace
+oc login --token=<token> --server=<url>
+oc project my-demo
 
-# Add HR MCP server (Weather + HR)
-./scripts/deploy-demo.sh add hr
+# Deploy Phase 1 (Weather MCP only)
+./scripts/deploy.sh phase1
 
-# Add all 4 MCP servers
-./scripts/deploy-demo.sh add all
+# Check status
+./scripts/deploy.sh status
+
+# Add HR MCP
+./scripts/deploy.sh add-hr
 
 # List available tools
-./scripts/deploy-demo.sh tools
+./scripts/deploy.sh tools
 ```
 
 ---
@@ -89,40 +93,26 @@ llamastack-demo/
 
 ## 🎮 Demo Script Commands
 
-### MCP Management (Single Namespace)
+The script auto-detects your current namespace. Just switch to your namespace and run!
 
 ```bash
-# Show current MCP configuration
-./scripts/deploy-demo.sh config
+# Switch to your namespace
+oc project my-demo
 
-# Add MCP servers
-./scripts/deploy-demo.sh add weather    # Weather only
-./scripts/deploy-demo.sh add hr         # Weather + HR
-./scripts/deploy-demo.sh add all        # All 4 servers
+# Deploy commands
+./scripts/deploy.sh phase1      # Deploy Weather MCP only
+./scripts/deploy.sh phase2      # Deploy Weather + HR MCPs
+./scripts/deploy.sh full        # Deploy all 4 MCP servers
 
-# Reset to Weather only
-./scripts/deploy-demo.sh reset
+# Manage MCP servers (without redeploying)
+./scripts/deploy.sh add-hr      # Add HR MCP to existing setup
+./scripts/deploy.sh add-all     # Add all MCPs to existing setup
+./scripts/deploy.sh reset       # Reset to Weather only
 
-# List available tools
-./scripts/deploy-demo.sh tools
-
-# Deploy MongoDB Weather MCP
-./scripts/deploy-demo.sh deploy-weather-mongodb
-```
-
-### Multi-Namespace Deployment
-
-```bash
-# Deploy separate namespaces for each phase
-./scripts/deploy-demo.sh phase1    # llamastack-phase1
-./scripts/deploy-demo.sh phase2    # llamastack-phase2
-./scripts/deploy-demo.sh full      # llamastack-full
-
-# Show status of all namespaces
-./scripts/deploy-demo.sh status
-
-# Cleanup all demo namespaces
-./scripts/deploy-demo.sh cleanup
+# Info commands
+./scripts/deploy.sh status      # Show pods and routes
+./scripts/deploy.sh tools       # List available tools
+./scripts/deploy.sh config      # Show current MCP config
 ```
 
 ---

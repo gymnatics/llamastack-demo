@@ -6,44 +6,69 @@ This guide shows how to demonstrate adding and removing MCP servers from a Llama
 
 ## Table of Contents
 
-1. [Quick Start with Script](#quick-start-with-script)
-2. [Manual Steps (For Demo)](#manual-steps-for-demo)
-3. [Available MCP Servers](#available-mcp-servers)
-4. [YAML Reference](#yaml-reference)
+1. [Quick Start](#quick-start)
+2. [Demo Flow](#demo-flow)
+3. [Manual Steps (For Demo)](#manual-steps-for-demo)
+4. [Available MCP Servers](#available-mcp-servers)
+5. [YAML Reference](#yaml-reference)
 
 ---
 
-## Quick Start with Script
+## Quick Start
 
-The `deploy-demo.sh` script provides easy commands to manage MCP servers.
+The `deploy.sh` script auto-detects your current namespace. Just run it!
 
-### View Current Configuration
 ```bash
-./scripts/deploy-demo.sh config
+# Switch to your namespace
+oc project my-demo-namespace
+
+# Deploy Phase 1 (Weather MCP only)
+./scripts/deploy.sh phase1
+
+# Check status
+./scripts/deploy.sh status
+
+# List available tools
+./scripts/deploy.sh tools
 ```
 
-### Add MCP Servers
-```bash
-# Add HR MCP (Weather + HR)
-./scripts/deploy-demo.sh add hr
+### All Commands
 
-# Add ALL MCP servers (Weather + HR + Jira + GitHub)
-./scripts/deploy-demo.sh add all
-```
+| Command | Description |
+|---------|-------------|
+| `./scripts/deploy.sh phase1` | Deploy Weather MCP only |
+| `./scripts/deploy.sh phase2` | Deploy Weather + HR MCPs |
+| `./scripts/deploy.sh full` | Deploy all 4 MCP servers |
+| `./scripts/deploy.sh add-hr` | Add HR MCP to existing setup |
+| `./scripts/deploy.sh add-all` | Add all MCPs to existing setup |
+| `./scripts/deploy.sh reset` | Reset to Weather only |
+| `./scripts/deploy.sh status` | Show pods and routes |
+| `./scripts/deploy.sh tools` | List available tools |
+| `./scripts/deploy.sh config` | Show current MCP config |
 
-### Reset to Weather Only
-```bash
-./scripts/deploy-demo.sh reset
-```
+---
 
-### List Available Tools
-```bash
-./scripts/deploy-demo.sh tools
-```
+## Demo Flow
 
-### Use Different Namespace
+**Recommended demo sequence:**
+
 ```bash
-NAMESPACE=my-custom-ns ./scripts/deploy-demo.sh add hr
+# 1. Start with Weather only
+./scripts/deploy.sh phase1
+./scripts/deploy.sh tools          # Shows: getforecast
+
+# 2. Add HR MCP
+./scripts/deploy.sh add-hr
+sleep 30                           # Wait for restart
+./scripts/deploy.sh tools          # Shows: getforecast + HR tools
+
+# 3. Add all MCPs
+./scripts/deploy.sh add-all
+sleep 30
+./scripts/deploy.sh tools          # Shows: all tools
+
+# 4. Reset back
+./scripts/deploy.sh reset
 ```
 
 ---
@@ -292,16 +317,19 @@ oc create configmap llama-stack-config \
 
 ---
 
-## Demo Script Commands Summary
+## Deploy Script Commands Summary
 
 | Command | Description |
 |---------|-------------|
-| `./scripts/deploy-demo.sh config` | Show current MCP configuration |
-| `./scripts/deploy-demo.sh add hr` | Add HR MCP (Weather + HR) |
-| `./scripts/deploy-demo.sh add all` | Add all 4 MCP servers |
-| `./scripts/deploy-demo.sh reset` | Reset to Weather only |
-| `./scripts/deploy-demo.sh tools` | List all available tools |
-| `./scripts/deploy-demo.sh deploy-weather-mongodb` | Deploy MongoDB Weather MCP |
+| `./scripts/deploy.sh phase1` | Deploy Weather MCP only |
+| `./scripts/deploy.sh phase2` | Deploy Weather + HR MCPs |
+| `./scripts/deploy.sh full` | Deploy all 4 MCP servers |
+| `./scripts/deploy.sh add-hr` | Add HR MCP to existing setup |
+| `./scripts/deploy.sh add-all` | Add all MCPs to existing setup |
+| `./scripts/deploy.sh reset` | Reset to Weather only |
+| `./scripts/deploy.sh status` | Show pods and routes |
+| `./scripts/deploy.sh tools` | List available tools |
+| `./scripts/deploy.sh config` | Show current MCP config |
 
 ---
 
