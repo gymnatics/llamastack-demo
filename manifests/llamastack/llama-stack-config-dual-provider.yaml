@@ -1,16 +1,25 @@
-# LlamaStack Configuration - PHASE 1
-# Single Provider (vLLM) + Single MCP (Weather)
+# LlamaStack Configuration with DUAL Providers
+# Provider 1: vLLM (local Llama 3.2-3B)
+# Provider 2: Azure OpenAI (gpt-4.1-mini and all available models)
 #
-# This is the starting point for the demo:
-# - 1 inference provider: vLLM (local Llama 3.2-3B)
-# - 1 MCP server: Weather
+# Prerequisites:
+#   1. Create Azure OpenAI secret (DO NOT commit keys to git!):
+#      oc create secret generic azure-openai-secret \
+#        --from-literal=endpoint="https://YOUR-RESOURCE.openai.azure.com/" \
+#        --from-literal=api-key="YOUR-API-KEY" \
+#        --from-literal=deployment="gpt-4.1-mini" \
+#        --from-literal=api-version="2024-12-01-preview" \
+#        -n my-first-model
+#
+#   2. Patch LlamaStack deployment with Azure env vars:
+#      oc patch deployment lsd-genai-playground -n my-first-model --type='json' -p='[
+#        {"op": "add", "path": "/spec/template/spec/containers/0/env/-", "value": {"name": "AZURE_OPENAI_ENDPOINT", "valueFrom": {"secretKeyRef": {"name": "azure-openai-secret", "key": "endpoint"}}}},
+#        {"op": "add", "path": "/spec/template/spec/containers/0/env/-", "value": {"name": "AZURE_OPENAI_API_KEY", "valueFrom": {"secretKeyRef": {"name": "azure-openai-secret", "key": "api-key"}}}},
+#        {"op": "add", "path": "/spec/template/spec/containers/0/env/-", "value": {"name": "AZURE_OPENAI_API_VERSION", "valueFrom": {"secretKeyRef": {"name": "azure-openai-secret", "key": "api-version"}}}}
+#      ]'
 #
 # Usage:
-#   oc apply -f manifests/llamastack/llama-stack-config-phase1.yaml
-#   oc delete pod -l app=lsd-genai-playground -n my-first-model
-#
-# After demo Phase 1, switch to Phase 2:
-#   oc apply -f manifests/llamastack/llama-stack-config-phase2.yaml
+#   oc apply -f manifests/llamastack/llama-stack-config-dual-provider.yaml
 #   oc delete pod -l app=lsd-genai-playground -n my-first-model
 #
 apiVersion: v1
@@ -20,7 +29,6 @@ metadata:
   namespace: my-first-model
 data:
   run.yaml: |
-    # Phase 1: vLLM + Weather MCP Only
     version: "2"
     image_name: rh
     apis:
@@ -37,7 +45,7 @@ data:
       - provider_id: sentence-transformers
         provider_type: inline::sentence-transformers
         config: {}
-      # Single Provider: vLLM (local)
+      # Provider 1: vLLM (local)
       - provider_id: vllm-inference
         provider_type: remote::vllm
         config:
@@ -45,6 +53,13 @@ data:
           max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
           tls_verify: ${env.VLLM_TLS_VERIFY:=true}
           url: http://llama-32-3b-instruct-predictor.my-first-model.svc.cluster.local:8080/v1
+      # Provider 2: Azure OpenAI
+      - provider_id: azure-openai
+        provider_type: remote::azure
+        config:
+          api_base: ${env.AZURE_OPENAI_ENDPOINT}
+          api_key: ${env.AZURE_OPENAI_API_KEY}
+          api_version: ${env.AZURE_OPENAI_API_VERSION:=2024-12-01-preview}
       vector_io:
       - provider_id: milvus
         provider_type: inline::milvus
@@ -106,13 +121,21 @@ data:
       model_type: embedding
       metadata:
         embedding_dimension: 768
-    # Single Model: Local vLLM
+    # Model 1: Local vLLM
     - provider_id: vllm-inference
       model_id: llama-32-3b-instruct
       model_type: llm
       metadata:
         description: "Local Llama 3.2-3B via vLLM"
         display_name: llama-32-3b-instruct
+    # Model 2: Azure OpenAI (auto-discovers all available models)
+    - provider_id: azure-openai
+      model_id: gpt-4.1-mini
+      provider_model_id: gpt-4.1-mini
+      model_type: llm
+      metadata:
+        description: "Azure OpenAI GPT-4.1 Mini"
+        display_name: gpt-4.1-mini (Azure)
     shields: []
     vector_dbs: []
     datasets: []
@@ -122,10 +145,25 @@ data:
     # Built-in RAG tools
     - toolgroup_id: builtin::rag
       provider_id: rag-runtime
-    # Single MCP Server: Weather
+    # MCP Server 1: Weather
     - toolgroup_id: mcp::weather-data
       provider_id: model-context-protocol
       mcp_endpoint:
         uri: http://mcp-weather.my-first-model.svc.cluster.local:80/sse
+    # MCP Server 2: HR Tools
+    - toolgroup_id: mcp::hr-tools
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://hr-mcp-server.my-first-model.svc.cluster.local:8000/mcp
+    # MCP Server 3: Jira/Confluence
+    - toolgroup_id: mcp::jira-confluence
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://jira-mcp-server.my-first-model.svc.cluster.local:8000/mcp
+    # MCP Server 4: GitHub
+    - toolgroup_id: mcp::github-tools
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://github-mcp-server.my-first-model.svc.cluster.local:8000/mcp
     server:
       port: 8321

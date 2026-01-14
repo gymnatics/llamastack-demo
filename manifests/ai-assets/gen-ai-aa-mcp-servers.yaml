@@ -1,0 +1,39 @@
+# AI Asset Endpoints - MCP Servers Registration
+# This ConfigMap registers MCP servers in the OpenShift AI "AI asset endpoints" UI
+# Apply to: redhat-ods-applications namespace
+#
+# Usage:
+#   oc apply -f manifests/ai-assets/gen-ai-aa-mcp-servers.yaml
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/part-of: llamastack-mcp-demo
+data:
+  Weather-MCP-Server: |
+    {
+      "url": "http://mcp-weather.my-first-model.svc.cluster.local:80/sse",
+      "description": "Weather data MCP server providing real-time weather information via OpenWeatherMap API. Tools: getforecast, get_current_weather.",
+      "transport": "sse"
+    }
+  HR-MCP-Server: |
+    {
+      "url": "http://hr-mcp-server.my-first-model.svc.cluster.local:8000/mcp",
+      "description": "HR system MCP server for employee management. Tools: get_vacation_balance, create_vacation_request, get_employee_info, list_employees, list_job_openings, get_performance_review.",
+      "transport": "streamable-http"
+    }
+  Jira-Confluence-MCP-Server: |
+    {
+      "url": "http://jira-mcp-server.my-first-model.svc.cluster.local:8000/mcp",
+      "description": "Jira/Confluence MCP server for project management. Tools: search_issues, get_issue_details, create_issue, search_confluence, get_page_content, list_projects, get_sprint_info.",
+      "transport": "streamable-http"
+    }
+  GitHub-MCP-Server: |
+    {
+      "url": "http://github-mcp-server.my-first-model.svc.cluster.local:8000/mcp",
+      "description": "GitHub MCP server for repository operations. Tools: search_repositories, get_repository, list_issues, create_issue, search_code, get_user.",
+      "transport": "streamable-http"
+    }

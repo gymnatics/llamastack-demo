@@ -1,6 +1,7 @@
 """
 LlamaStack Multi-MCP Demo UI
 Enhanced interface supporting multiple MCP servers with dynamic management
+MCP servers are auto-detected from LlamaStack's configured toolgroups
 """
 import streamlit as st
 import requests
@@ -10,13 +11,55 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 
 # Configuration from environment or defaults
-LLAMASTACK_URL = os.getenv("LLAMASTACK_URL", "http://localhost:8321")
-MODEL_ID = os.getenv("MODEL_ID", "")  # Will be auto-detected if empty
+DEFAULT_LLAMASTACK_URL = os.getenv("LLAMASTACK_URL", "http://localhost:8321")
+DEFAULT_MODEL_ID = os.getenv("MODEL_ID", "")  # Will be auto-detected if empty
+
+def get_llamastack_url() -> str:
+    """Get the current LlamaStack URL from session state or default."""
+    if "llamastack_url" in st.session_state:
+        return st.session_state.llamastack_url
+    return DEFAULT_LLAMASTACK_URL
+
+def get_model_id() -> str:
+    """Get the current model ID from session state or default."""
+    if "selected_model_id" in st.session_state and st.session_state.selected_model_id:
+        return st.session_state.selected_model_id
+    return DEFAULT_MODEL_ID
+
+# MCP Server metadata for display (icon, description)
+MCP_SERVER_METADATA = {
+    "mcp::weather-data": {
+        "name": "Weather",
+        "icon": "🌤️",
+        "description": "Weather data via OpenWeatherMap API"
+    },
+    "mcp::hr-tools": {
+        "name": "HR Tools",
+        "icon": "👥",
+        "description": "Employee info, vacation, job openings"
+    },
+    "mcp::jira-confluence": {
+        "name": "Jira/Confluence",
+        "icon": "📋",
+        "description": "Issue tracking and documentation"
+    },
+    "mcp::github-tools": {
+        "name": "GitHub",
+        "icon": "🐙",
+        "description": "Repository search, issues, code search"
+    },
+    "builtin::rag": {
+        "name": "RAG",
+        "icon": "🔍",
+        "description": "Built-in retrieval augmented generation"
+    }
+}
 
 def get_available_models() -> List[Dict]:
     """Fetch available models from LlamaStack."""
     try:
-        response = requests.get(f"{LLAMASTACK_URL}/v1/models", timeout=5)
+        url = get_llamastack_url()
+        response = requests.get(f"{url}/v1/models", timeout=5)
         if response.status_code == 200:
             data = response.json()
             # Filter to only LLM models (not embeddings)
@@ -26,64 +69,74 @@ def get_available_models() -> List[Dict]:
     return []
 
 def get_default_model_id() -> str:
-    """Get the default model ID - either from env or auto-detect."""
-    global MODEL_ID
-    if MODEL_ID:
-        return MODEL_ID
+    """Get the default model ID - either from session state, env, or auto-detect."""
+    # Check session state first
+    if "selected_model_id" in st.session_state and st.session_state.selected_model_id:
+        return st.session_state.selected_model_id
+    
+    # Check env var
+    if DEFAULT_MODEL_ID:
+        return DEFAULT_MODEL_ID
     
     # Auto-detect from LlamaStack
     models = get_available_models()
     if models:
         # Prefer the first LLM model
-        MODEL_ID = models[0].get("identifier", "")
-        return MODEL_ID
+        model_id = models[0].get("identifier", "")
+        st.session_state.selected_model_id = model_id
+        return model_id
     
     # Fallback
     return "llama-32-3b-instruct"
 
-# Default MCP Servers (can be overridden via environment)
-# NOTE: Weather MCP is colleague's OpenWeatherMap version on port 80 (service port)
-DEFAULT_MCP_SERVERS = json.loads(os.getenv("MCP_SERVERS", json.dumps([
-    {
-        "name": "Weather",
-        "url": "http://mcp-weather.my-first-model.svc.cluster.local:80",
-        "description": "Weather data via OpenWeatherMap API",
-        "icon": "🌤️",
-        "enabled": True
-    },
-    {
-        "name": "HR Tools",
-        "url": "http://hr-mcp-server.my-first-model.svc.cluster.local:8000",
-        "description": "Employee info, vacation, job openings, performance reviews",
-        "icon": "👥",
-        "enabled": True
-    },
-    {
-        "name": "Jira/Confluence",
-        "url": "http://jira-mcp-server.my-first-model.svc.cluster.local:8000",
-        "description": "Issue tracking and documentation",
-        "icon": "📋",
-        "enabled": True
-    },
-    {
-        "name": "GitHub",
-        "url": "http://github-mcp-server.my-first-model.svc.cluster.local:8000",
-        "description": "Repository search, issues, code search, user profiles",
-        "icon": "🐙",
-        "enabled": True
-    }
-])))
+def get_available_tools() -> List[Dict]:
+    """Fetch available MCP tools from LlamaStack."""
+    try:
+        url = get_llamastack_url()
+        response = requests.get(f"{url}/v1/tools", timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if isinstance(data, list):
+                return data
+            return data.get("data", [])
+    except Exception as e:
+        pass
+    return []
+
+def extract_mcp_servers_from_tools(tools: List[Dict]) -> List[Dict]:
+    """Extract unique MCP servers from the tools list."""
+    toolgroups = set()
+    for tool in tools:
+        toolgroup_id = tool.get("toolgroup_id", "")
+        if toolgroup_id:
+            toolgroups.add(toolgroup_id)
+    
+    servers = []
+    for tg in sorted(toolgroups):
+        metadata = MCP_SERVER_METADATA.get(tg, {
+            "name": tg.replace("mcp::", "").replace("::", " ").title(),
+            "icon": "🔧",
+            "description": f"Tools from {tg}"
+        })
+        
+        # Count tools in this group
+        tool_count = len([t for t in tools if t.get("toolgroup_id") == tg])
+        
+        servers.append({
+            "toolgroup_id": tg,
+            "name": metadata["name"],
+            "icon": metadata["icon"],
+            "description": f"{metadata['description']} ({tool_count} tools)",
+            "tool_count": tool_count,
+            "enabled": True
+        })
+    
+    return servers
 
 # UI Customization
 APP_TITLE = os.getenv("APP_TITLE", "LlamaStack Multi-MCP Demo")
 APP_SUBTITLE = os.getenv("APP_SUBTITLE", "AI Agent with Multiple Tool Integrations")
 SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", """You are an intelligent AI assistant with access to multiple external tools through MCP servers.
-
-Available tool categories:
-- Weather: Get real-time weather forecasts (getforecast)
-- HR: Check vacation balances, employee info, job openings, performance reviews (get_vacation_balance, get_employee_info, list_employees, list_job_openings, get_performance_review, create_vacation_request)
-- Jira/Confluence: Search issues, create tickets, find documentation (search_issues, get_issue_details, create_issue, search_confluence, get_page_content, list_projects, get_sprint_info)
-- GitHub: Search repositories, get repo details, list issues, search code, get user profiles (search_repositories, get_repository, list_issues, create_issue, search_code, get_user)
 
 Use the appropriate tools to answer user questions accurately. Always explain what tools you're using and why.""")
 
@@ -310,15 +363,6 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* Add MCP form */
-    .add-mcp-form {
-        background: #1e293b;
-        border: 1px dashed #475569;
-        border-radius: 10px;
-        padding: 1rem;
-        margin-top: 1rem;
-    }
-    
     /* Metrics */
     .metrics-container {
         display: flex;
@@ -353,70 +397,31 @@ st.markdown("""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "mcp_servers" not in st.session_state:
-    st.session_state.mcp_servers = DEFAULT_MCP_SERVERS.copy()
+    st.session_state.mcp_servers = []  # Will be populated from LlamaStack
 if "mcp_tools" not in st.session_state:
     st.session_state.mcp_tools = []
 if "llamastack_status" not in st.session_state:
     st.session_state.llamastack_status = "unknown"
-if "mcp_statuses" not in st.session_state:
-    st.session_state.mcp_statuses = {}
 if "tool_calls_count" not in st.session_state:
     st.session_state.tool_calls_count = 0
-if "show_add_mcp" not in st.session_state:
-    st.session_state.show_add_mcp = False
 
 
 def check_llamastack_health() -> bool:
     """Check if LlamaStack is healthy."""
     try:
-        response = requests.get(f"{LLAMASTACK_URL}/v1/health", timeout=5)
+        url = get_llamastack_url()
+        response = requests.get(f"{url}/v1/health", timeout=5)
         return response.status_code == 200
     except:
         return False
 
 
-def check_mcp_health(url: str) -> bool:
-    """Check if an MCP server is healthy."""
-    try:
-        # Try health endpoint first
-        health_url = f"{url}/health"
-        response = requests.get(health_url, timeout=5)
-        if response.status_code == 200:
-            return True
-        
-        # Try MCP initialize
-        response = requests.post(
-            f"{url}/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "healthcheck", "version": "1.0"}
-                },
-                "id": 1
-            },
-            headers={"Content-Type": "application/json"},
-            timeout=5
-        )
-        return response.status_code == 200
-    except:
-        return False
-
-
-def get_available_tools() -> List[Dict]:
-    """Fetch available MCP tools from LlamaStack."""
-    try:
-        response = requests.get(f"{LLAMASTACK_URL}/v1/tools", timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            if isinstance(data, list):
-                return data
-            return data.get("data", [])
-    except Exception as e:
-        st.error(f"Could not fetch tools: {e}")
-    return []
+def refresh_tools_and_servers():
+    """Refresh tools and extract MCP servers from them."""
+    tools = get_available_tools()
+    st.session_state.mcp_tools = tools
+    st.session_state.mcp_servers = extract_mcp_servers_from_tools(tools)
+    return tools
 
 
 def chat_completion_openai(messages: List[Dict], tools: List[Dict] = None) -> Dict:
@@ -433,8 +438,9 @@ def chat_completion_openai(messages: List[Dict], tools: List[Dict] = None) -> Di
         payload["tool_choice"] = "auto"
     
     try:
+        url = get_llamastack_url()
         response = requests.post(
-            f"{LLAMASTACK_URL}/v1/openai/v1/chat/completions",
+            f"{url}/v1/openai/v1/chat/completions",
             json=payload,
             timeout=120
         )
@@ -467,8 +473,9 @@ def format_tools_for_openai(mcp_tools: List[Dict]) -> List[Dict]:
 def execute_tool_call(tool_name: str, tool_args: Dict) -> str:
     """Execute a tool call via LlamaStack."""
     try:
+        url = get_llamastack_url()
         response = requests.post(
-            f"{LLAMASTACK_URL}/v1/tool-runtime/invoke",
+            f"{url}/v1/tool-runtime/invoke",
             json={
                 "tool_name": tool_name,
                 "kwargs": tool_args
@@ -498,24 +505,6 @@ def execute_tool_call(tool_name: str, tool_args: Dict) -> str:
         return f"Tool execution error: {str(e)}"
 
 
-def add_mcp_server(name: str, url: str, description: str, icon: str = "🔧"):
-    """Add a new MCP server to the session."""
-    new_server = {
-        "name": name,
-        "url": url,
-        "description": description,
-        "icon": icon,
-        "enabled": True
-    }
-    st.session_state.mcp_servers.append(new_server)
-
-
-def remove_mcp_server(index: int):
-    """Remove an MCP server from the session."""
-    if 0 <= index < len(st.session_state.mcp_servers):
-        st.session_state.mcp_servers.pop(index)
-
-
 def toggle_mcp_server(index: int):
     """Toggle an MCP server on/off."""
     if 0 <= index < len(st.session_state.mcp_servers):
@@ -536,11 +525,15 @@ with st.sidebar:
     
     # Connection settings
     with st.expander("🌐 LlamaStack Endpoint", expanded=False):
-        global LLAMASTACK_URL, MODEL_ID
+        # Use session state for URL and model to avoid global issues
+        if "llamastack_url" not in st.session_state:
+            st.session_state.llamastack_url = DEFAULT_LLAMASTACK_URL
+        if "selected_model_id" not in st.session_state:
+            st.session_state.selected_model_id = DEFAULT_MODEL_ID
         
         new_llamastack_url = st.text_input(
             "LlamaStack URL",
-            value=LLAMASTACK_URL,
+            value=st.session_state.llamastack_url,
             help="LlamaStack service endpoint"
         )
         
@@ -566,10 +559,9 @@ with st.sidebar:
                 help="Model identifier in LlamaStack"
             )
         
-        if new_llamastack_url != LLAMASTACK_URL:
-            LLAMASTACK_URL = new_llamastack_url
-        if new_model_id != MODEL_ID:
-            MODEL_ID = new_model_id
+        # Update session state
+        st.session_state.llamastack_url = new_llamastack_url
+        st.session_state.selected_model_id = new_model_id
     
     st.markdown("---")
     
@@ -591,107 +583,71 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # MCP Servers Section
+    # MCP Servers Section - Now dynamically loaded!
     st.markdown("### 🔌 MCP Servers")
+    st.caption("💡 Auto-detected from LlamaStack")
     
-    # Check all servers button
-    if st.button("🔄 Check All Servers", use_container_width=True):
-        for i, server in enumerate(st.session_state.mcp_servers):
-            status = "online" if check_mcp_health(server["url"]) else "offline"
-            st.session_state.mcp_statuses[server["name"]] = status
+    # Refresh button - this now updates both tools AND servers
+    if st.button("🔄 Refresh", use_container_width=True, key="refresh_all"):
+        with st.spinner("Fetching from LlamaStack..."):
+            tools = refresh_tools_and_servers()
+            st.session_state.llamastack_status = "online" if tools else "offline"
+        if st.session_state.mcp_servers:
+            st.success(f"Found {len(st.session_state.mcp_servers)} MCP servers!")
+        else:
+            st.warning("No MCP servers found. Is LlamaStack running?")
         st.rerun()
     
-    # Display MCP servers
-    for i, server in enumerate(st.session_state.mcp_servers):
-        status = st.session_state.mcp_statuses.get(server["name"], "unknown")
-        enabled_class = "enabled" if server["enabled"] else "disabled"
-        
-        with st.container():
-            col1, col2, col3 = st.columns([3, 1, 1])
+    # Display MCP servers (dynamically loaded)
+    if st.session_state.mcp_servers:
+        for i, server in enumerate(st.session_state.mcp_servers):
+            enabled_class = "enabled" if server.get("enabled", True) else "disabled"
             
-            with col1:
-                st.markdown(f"""
-                <div class="mcp-server-card {enabled_class}">
-                    <div class="mcp-server-header">
-                        <span class="mcp-server-icon">{server['icon']}</span>
-                        <span class="mcp-server-name">{server['name']}</span>
+            with st.container():
+                col1, col2 = st.columns([4, 1])
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="mcp-server-card {enabled_class}">
+                        <div class="mcp-server-header">
+                            <span class="mcp-server-icon">{server['icon']}</span>
+                            <span class="mcp-server-name">{server['name']}</span>
+                        </div>
+                        <div class="mcp-server-desc">{server['description']}</div>
                     </div>
-                    <div class="mcp-server-desc">{server['description']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                # Toggle button
-                toggle_label = "✓" if server["enabled"] else "○"
-                if st.button(toggle_label, key=f"toggle_{i}", help="Toggle server"):
-                    toggle_mcp_server(i)
-                    st.rerun()
-            
-            with col3:
-                # Remove button (only for non-default servers)
-                if i >= len(DEFAULT_MCP_SERVERS):
-                    if st.button("🗑️", key=f"remove_{i}", help="Remove server"):
-                        remove_mcp_server(i)
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    # Toggle button
+                    toggle_label = "✓" if server.get("enabled", True) else "○"
+                    if st.button(toggle_label, key=f"toggle_{i}", help="Toggle server"):
+                        toggle_mcp_server(i)
                         st.rerun()
-    
-    # Add new MCP server
-    st.markdown("---")
-    if st.button("➕ Add MCP Server", use_container_width=True):
-        st.session_state.show_add_mcp = not st.session_state.show_add_mcp
-    
-    if st.session_state.show_add_mcp:
-        with st.form("add_mcp_form"):
-            st.markdown("**Add New MCP Server**")
-            new_name = st.text_input("Name", placeholder="My MCP Server")
-            new_url = st.text_input("URL", placeholder="http://service:8000")
-            new_desc = st.text_input("Description", placeholder="What does this server do?")
-            new_icon = st.selectbox("Icon", ["🔧", "📊", "🔍", "💾", "🌐", "📁", "🔒", "⚡"])
-            
-            if st.form_submit_button("Add Server"):
-                if new_name and new_url:
-                    add_mcp_server(new_name, new_url, new_desc, new_icon)
-                    st.session_state.show_add_mcp = False
-                    st.success(f"Added {new_name}!")
-                    st.rerun()
-                else:
-                    st.error("Name and URL are required")
+    else:
+        st.info("Click 'Refresh' to load MCP servers from LlamaStack")
     
     st.markdown("---")
     
     # Tools section
     st.markdown("### 🛠️ Available Tools")
     
-    if st.button("🔄 Refresh Tools", use_container_width=True):
-        st.session_state.mcp_tools = get_available_tools()
-        if st.session_state.mcp_tools:
-            st.success(f"Found {len(st.session_state.mcp_tools)} tools!")
-        else:
-            st.warning("No tools found")
-    
     if st.session_state.mcp_tools:
-        # Group tools by prefix
+        # Group tools by toolgroup
         tool_groups = {}
         for tool in st.session_state.mcp_tools:
-            tool_name = tool.get("name", tool.get("identifier", "Unknown"))
-            # Try to extract group from tool name
-            if "::" in tool_name:
-                group = tool_name.split("::")[0]
-            elif "_" in tool_name:
-                group = tool_name.split("_")[0]
-            else:
-                group = "Other"
-            
-            if group not in tool_groups:
-                tool_groups[group] = []
-            tool_groups[group].append(tool)
+            toolgroup = tool.get("toolgroup_id", "other")
+            if toolgroup not in tool_groups:
+                tool_groups[toolgroup] = []
+            tool_groups[toolgroup].append(tool)
         
-        for group, tools in tool_groups.items():
-            with st.expander(f"📦 {group} ({len(tools)} tools)"):
+        for group, tools in sorted(tool_groups.items()):
+            metadata = MCP_SERVER_METADATA.get(group, {"icon": "📦", "name": group})
+            with st.expander(f"{metadata.get('icon', '📦')} {metadata.get('name', group)} ({len(tools)})"):
                 for tool in tools:
                     tool_name = tool.get("name", tool.get("identifier", "Unknown"))
                     st.caption(f"• {tool_name}")
     else:
-        st.info("Click 'Refresh Tools' to load")
+        st.info("Click 'Refresh' to load tools")
     
     st.markdown("---")
     
@@ -707,7 +663,7 @@ with st.sidebar:
 
 # Architecture diagram
 with st.expander("🏗️ Architecture Overview", expanded=True):
-    enabled_servers = [s for s in st.session_state.mcp_servers if s["enabled"]]
+    enabled_servers = [s for s in st.session_state.mcp_servers if s.get("enabled", True)]
     
     st.markdown("""
     <div class="architecture-container">
@@ -721,31 +677,37 @@ with st.expander("🏗️ Architecture Overview", expanded=True):
     """, unsafe_allow_html=True)
     
     # Show enabled MCP servers
-    mcp_html = ""
-    for server in enabled_servers:
-        mcp_html += f'<div class="flow-box mcp">{server["icon"]} {server["name"]}</div>'
-    
-    st.markdown(f"""
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                {mcp_html}
+    if enabled_servers:
+        mcp_html = ""
+        for server in enabled_servers:
+            mcp_html += f'<div class="flow-box mcp">{server["icon"]} {server["name"]}</div>'
+        
+        st.markdown(f"""
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    {mcp_html}
+                </div>
             </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+                <div class="flow-box mcp">🔧 No MCP Servers</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Server details
-    cols = st.columns(len(enabled_servers) if enabled_servers else 1)
-    for i, server in enumerate(enabled_servers):
-        with cols[i]:
-            status = st.session_state.mcp_statuses.get(server["name"], "unknown")
-            status_color = "#10b981" if status == "online" else "#ef4444" if status == "offline" else "#f59e0b"
-            st.markdown(f"""
-            <div style="background: #1e293b; border-radius: 8px; padding: 0.75rem; text-align: center;">
-                <div style="font-size: 1.5rem;">{server['icon']}</div>
-                <div style="font-weight: 600; color: #f1f5f9;">{server['name']}</div>
-                <div style="font-size: 0.7rem; color: {status_color};">● {status}</div>
-            </div>
-            """, unsafe_allow_html=True)
+    if enabled_servers:
+        cols = st.columns(len(enabled_servers))
+        for i, server in enumerate(enabled_servers):
+            with cols[i]:
+                st.markdown(f"""
+                <div style="background: #1e293b; border-radius: 8px; padding: 0.75rem; text-align: center;">
+                    <div style="font-size: 1.5rem;">{server['icon']}</div>
+                    <div style="font-weight: 600; color: #f1f5f9;">{server['name']}</div>
+                    <div style="font-size: 0.7rem; color: #10b981;">● {server.get('tool_count', 0)} tools</div>
+                </div>
+                """, unsafe_allow_html=True)
 
 # Metrics
 col1, col2, col3, col4 = st.columns(4)
@@ -754,7 +716,7 @@ with col1:
 with col2:
     st.metric("🔧 Tool Calls", st.session_state.tool_calls_count)
 with col3:
-    enabled_count = len([s for s in st.session_state.mcp_servers if s["enabled"]])
+    enabled_count = len([s for s in st.session_state.mcp_servers if s.get("enabled", True)])
     st.metric("🔌 Active MCPs", enabled_count)
 with col4:
     st.metric("🛠️ Tools", len(st.session_state.mcp_tools))
@@ -785,7 +747,7 @@ for message in st.session_state.messages:
             """, unsafe_allow_html=True)
 
 # Chat input
-if prompt := st.chat_input("Ask a question... (e.g., 'What's the weather at VIDP?' or 'Check vacation balance for EMP001')"):
+if prompt := st.chat_input("Ask a question... (e.g., 'What's the weather forecast?' or 'Check vacation balance for EMP001')"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -893,11 +855,11 @@ if prompt := st.chat_input("Ask a question... (e.g., 'What's the weather at VIDP
 
 # Footer
 st.markdown("---")
-enabled_servers = [s["name"] for s in st.session_state.mcp_servers if s["enabled"]]
+enabled_servers = [s["name"] for s in st.session_state.mcp_servers if s.get("enabled", True)]
 current_model_display = get_default_model_id() or "Not detected"
 st.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.8rem;">
     <p>🦙 LlamaStack Multi-MCP Demo | Model: {current_model_display}</p>
-    <p>Active MCP Servers: {', '.join(enabled_servers) if enabled_servers else 'None'}</p>
+    <p>Active MCP Servers: {', '.join(enabled_servers) if enabled_servers else 'Click Refresh to load'}</p>
 </div>
 """, unsafe_allow_html=True)

@@ -1,634 +1,580 @@
 # LlamaStack MCP Demo Guide
 
-A comprehensive guide for demonstrating LlamaStack with multiple MCP servers on OpenShift AI.
+## 📹 VIDEO DEMO SCRIPT - EXACT COMMANDS
+
+This guide provides the **exact commands** to run during each step of the video demo.
 
 ---
 
 ## Table of Contents
 
-1. [Demo Strategy](#demo-strategy) ⭐ **Start Here**
-2. [Pre-Demo Setup](#pre-demo-setup)
-3. [Demo Day Flow](#demo-day-flow)
-4. [Demo Scenarios](#demo-scenarios)
-5. [Quick Reference Commands](#quick-reference-commands)
-6. [Backup & Recovery](#backup--recovery)
-7. [Available MCP Servers](#available-mcp-servers)
-8. [YAML Reference](#yaml-reference)
-9. [Troubleshooting](#troubleshooting)
+1. [Pre-Recording Setup](#pre-recording-setup)
+2. [Video Step 1: Deploy MCP Servers](#video-step-1-deploy-mcp-servers-on-openshift)
+3. [Video Step 2: Register in AI Assets](#video-step-2-register-mcp-servers-in-ai-assets)
+4. [Video Step 3: Test in Playground](#video-step-3-test-in-genai-studio-playground)
+5. [Video Step 4: LlamaStack Phase 1](#video-step-4-llamastack-distribution-phase-1)
+6. [Video Step 5: Client Integration](#video-step-5-client-integration)
+7. [Video Step 6: Iterate LlamaStack](#video-step-6-iterate-llamastack-distribution)
+8. [Video Step 7: Show Updated Config](#video-step-7-show-updated-configuration)
+9. [Reset Commands](#reset-commands)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Demo Strategy
+## Pre-Recording Setup
 
-### Recommended Approach: **Hybrid**
+> ⏰ **Run these commands BEFORE starting the video recording**
 
-| What | When | Why |
-|------|------|-----|
-| **Multi-Project Setup** | Pre-demo (day before) | Shows "end state" without waiting |
-| **Live MCP Addition** | During demo | Shows "how to do it" |
-| **Frontend Demo** | During demo | Interactive, engaging |
-
-### Why Hybrid?
-
-| Approach | Pros | Cons |
-|----------|------|------|
-| All Live | Shows real deployment | Risk of failures, 5-10 min waiting |
-| All Pre-setup | Fast, smooth | Doesn't show "how to do it" |
-| **Hybrid** ✅ | Best of both worlds | Requires some prep |
-
-### Demo Timeline (~30 min)
-
-| Section | Duration | What to Show |
-|---------|----------|--------------|
-| Intro | 2 min | Architecture, what MCP is |
-| Live Deploy | 8 min | Add HR MCP in `my-first-model` |
-| Multi-Project | 8 min | Show team-ops, team-hr, team-dev |
-| Frontend Demo | 10 min | Interactive queries |
-| Q&A | 5 min | Questions |
-
----
-
-## Pre-Demo Setup
-
-> ⏰ **Do this the day before or morning of the demo**
-
-### Step 1: Setup Multi-Project Demo (Pre-setup)
-
-This creates team namespaces that you'll show as the "end state":
+### 1. Login to Cluster
 
 ```bash
-# Login to cluster
-oc login --token=<your-token> --server=<your-server>
+oc login --token=sha256~YOUR_TOKEN --server=https://api.YOUR_CLUSTER:6443
+```
 
-# Go to your project directory
+### 2. Navigate to Project Directory
+
+```bash
 cd /Users/dayeo/LlamaStack-MCP-Demo
-
-# Set up team namespaces (creates team-ops, team-hr, team-dev)
-./scripts/deploy.sh multi setup
-
-# Wait for pods to start (~60 seconds)
-sleep 60
-
-# Verify all running
-./scripts/deploy.sh multi status
 ```
 
-**Expected output:**
-```
-📁 team-ops - Ops Team - Weather only
-   MCP Servers: 1
-   Pods: 2/2 running
-
-📁 team-hr - HR Team - Weather + HR tools
-   MCP Servers: 2
-   Pods: 3/3 running
-
-📁 team-dev - Dev Team - All development tools
-   MCP Servers: 4
-   Pods: 5/5 running
-```
-
-### Step 2: Reset `my-first-model` to Phase 1
-
-This gives you a "clean slate" for the live demo:
+### 3. Reset Demo Environment
 
 ```bash
-# Switch to main namespace
-oc project my-first-model
+# Delete AI Assets ConfigMap (so you can re-register during demo)
+oc delete configmap gen-ai-aa-mcp-servers -n redhat-ods-applications
 
-# Reset to Weather only (Phase 1)
-./scripts/deploy.sh reset
+# Apply Phase 1 LlamaStack config (vLLM + Weather only)
+oc apply -f manifests/llamastack/llama-stack-config-phase1.yaml
+
+# Restart LlamaStack to pick up Phase 1 config
+oc delete pod -l app=lsd-genai-playground -n my-first-model
 
 # Wait for restart
 sleep 30
 
-# Verify - should show 3 tools
-./scripts/deploy.sh tools
-```
-
-**Expected output:**
-```
-Total: 3 tools
-  - insert_into_memory
-  - knowledge_search
-  - getforecast
-```
-
-### Step 3: Verify Frontend is Accessible
-
-```bash
-# Get frontend URL
-oc get route -n my-first-model | grep frontend
-
-# Or get LlamaStack demo route
-oc get route llamastack-multi-mcp-demo -n my-first-model -o jsonpath='{.spec.host}'
-```
-
-Open the URL in browser and verify it loads.
-
-### Pre-Demo Checklist
-
-- [ ] Multi-project namespaces running (`./scripts/deploy.sh multi status`)
-- [ ] `my-first-model` reset to Phase 1 (3 tools)
-- [ ] Frontend UI accessible
-- [ ] Terminal ready with correct namespace (`oc project my-first-model`)
-- [ ] Demo scenarios tested
-
----
-
-## Demo Day Flow
-
-### Part 1: Introduction (2 min)
-
-**Show the architecture diagram** (from PRD or slides):
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    OpenShift AI Cluster                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │  Frontend   │───▶│ LlamaStack  │───▶│ Llama 3.2   │         │
-│  │ (Streamlit) │    │Distribution │    │   (vLLM)    │         │
-│  └─────────────┘    └──────┬──────┘    └─────────────┘         │
-│                            │                                     │
-│              ┌─────────────┼─────────────┐                      │
-│              │             │             │                      │
-│              ▼             ▼             ▼                      │
-│  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐         │
-│  │  Weather MCP  │ │    HR MCP     │ │   Jira MCP    │         │
-│  └───────────────┘ └───────────────┘ └───────────────┘         │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Key talking points:**
-- "LlamaStack is the orchestration layer between the LLM and external tools"
-- "MCP (Model Context Protocol) is how AI agents connect to external services"
-- "Each MCP server provides specific tools - Weather, HR, Jira, GitHub"
-
----
-
-### Part 2: Live Deployment Demo (8 min)
-
-> **Namespace:** `my-first-model`
-
-**Goal:** Show the process of adding MCP servers live
-
-#### Step 1: Show Current State (1 min)
-
-```bash
-# Show current status
-./scripts/deploy.sh status
-
-# Show current tools (should be 3)
-./scripts/deploy.sh tools
-```
-
-**Say:** "Right now we only have the Weather MCP server connected. Let's add HR tools."
-
-#### Step 2: Add HR MCP Server (3 min)
-
-```bash
-# Add HR MCP
-./scripts/deploy.sh add hr
-```
-
-**While waiting (~30 seconds), explain:**
-- "The script is updating the LlamaStack ConfigMap"
-- "This is all YAML-based - no code changes needed"
-- "Admins control which tools teams can access"
-
-#### Step 3: Verify New Tools (2 min)
-
-```bash
-# Check tools now available
-./scripts/deploy.sh tools
-```
-
-**Expected output:**
-```
-Total: 8 tools
-  - insert_into_memory
-  - knowledge_search
-  - getforecast
-  - get_vacation_balance
-  - get_employee_info
-  - list_employees
-  - list_job_openings
-  - create_vacation_request
-```
-
-**Say:** "Now we have 8 tools - the original Weather tools plus 5 HR tools."
-
-#### Step 4: Show the Configuration Change (2 min)
-
-```bash
-# Show what changed in the config
-./scripts/deploy.sh config
-```
-
-**Say:** "This is the ConfigMap that controls which MCP servers are connected. Admins edit this YAML to add or remove tools for their teams."
-
----
-
-### Part 3: Multi-Project Demo (8 min)
-
-> **Namespaces:** `team-ops`, `team-hr`, `team-dev` (pre-setup)
-
-**Goal:** Show how different teams have different tool access
-
-#### Step 1: Explain the Concept (1 min)
-
-**Say:** "In an enterprise, different teams need different tools:
-- Ops team only needs monitoring tools
-- HR team needs employee management tools
-- Dev team needs everything for full workflow"
-
-#### Step 2: Show Team Status (1 min)
-
-```bash
-# Show all team namespaces
-./scripts/deploy.sh multi status
-```
-
-#### Step 3: Compare Team Tools (4 min)
-
-```bash
-# Ops Team - minimal (3 tools)
-oc project team-ops
-./scripts/deploy.sh tools
-
-# HR Team - more tools (8 tools)
-oc project team-hr
-./scripts/deploy.sh tools
-
-# Dev Team - all tools (17 tools)
-oc project team-dev
-./scripts/deploy.sh tools
-```
-
-**Say after each:**
-- **Ops:** "Ops team only has Weather tools - minimal footprint for monitoring."
-- **HR:** "HR team has Weather + HR tools - they can check vacation balances."
-- **Dev:** "Dev team has all 17 tools - full development workflow with Jira and GitHub."
-
-#### Step 4: Key Takeaways (2 min)
-
-**Say:**
-1. "Each team has their own LlamaStack distribution"
-2. "Admins control access via YAML configuration"
-3. "No code changes needed - just update the ConfigMap"
-4. "All changes are auditable and version-controlled"
-
----
-
-### Part 4: Interactive Frontend Demo (10 min)
-
-> **Use the Frontend UI**
-
-#### Step 1: Open Frontend
-
-```bash
-# Get the frontend URL (use team-dev for all tools)
-oc project team-dev
-oc get route -n team-dev | grep frontend
-```
-
-Open the URL in browser.
-
-#### Step 2: Demo Scenarios
-
-**Scenario 1: Weather Query**
-```
-Type: "What's the weather forecast for today?"
-```
-Watch the agent use the Weather MCP.
-
-**Scenario 2: HR Self-Service**
-```
-Type: "Check the vacation balance for employee EMP001"
-```
-Watch the agent use the HR MCP.
-
-**Scenario 3: Multi-Tool Query**
-```
-Type: "List all employees in Engineering and check the weather"
-```
-Watch the agent use multiple MCPs together.
-
-#### Step 3: Show Tool Selection (2 min)
-
-In the sidebar, show:
-- The list of connected MCP servers
-- The toggle buttons to enable/disable servers
-- The auto-detected model
-
-**Say:** "Users can choose which tools they want to use. Admins control what's available, users control what they use."
-
----
-
-### Part 5: Q&A (5 min)
-
-Common questions to prepare for:
-- "How do you add a new MCP server?" → Show the YAML config
-- "Can users add their own MCP servers?" → No, admin-only via YAML
-- "How does authentication work?" → MCP servers can require tokens
-- "What about security?" → Namespace isolation, RBAC
-
----
-
-## Demo Scenarios
-
-Use these scenarios during the interactive demo:
-
-### Scenario 1: Weather Query
-```
-User: "What's the weather forecast for today?"
-Agent: Uses Weather MCP → getforecast tool
-Expected: Returns weather forecast data
-```
-
-### Scenario 2: HR Self-Service
-```
-User: "Check the vacation balance for employee EMP001"
-Agent: Uses HR MCP → get_vacation_balance tool
-Expected: Returns "15 vacation days remaining"
-
-User: "List all job openings"
-Agent: Uses HR MCP → list_job_openings tool
-Expected: Returns available positions
-```
-
-### Scenario 3: Developer Workflow
-```
-User: "Search for open bugs in the DEMO project"
-Agent: Uses Jira MCP → search_issues tool
-Expected: Returns list of bug tickets
-
-User: "Find documentation about API authentication"
-Agent: Uses Jira MCP → search_confluence tool
-Expected: Returns relevant Confluence pages
-```
-
-### Scenario 4: GitHub Integration
-```
-User: "Search for popular Kubernetes repositories"
-Agent: Uses GitHub MCP → search_repositories tool
-Expected: Returns list of repos with stars
-```
-
-### Scenario 5: Multi-Tool Query
-```
-User: "I need to plan a team offsite. Check employee EMP001's vacation balance 
-       and find weather forecasts for potential locations."
-Agent: Uses HR MCP + Weather MCP together
-Expected: Returns vacation balance AND weather data
-```
-
----
-
-## Quick Reference Commands
-
-### Pre-Demo Setup
-```bash
-./scripts/deploy.sh multi setup    # Create team namespaces
-./scripts/deploy.sh reset          # Reset my-first-model to Phase 1
-```
-
-### Live Demo
-```bash
-./scripts/deploy.sh status         # Show pods and routes
-./scripts/deploy.sh tools          # List available tools
-./scripts/deploy.sh add hr         # Add HR MCP
-./scripts/deploy.sh config         # Show current MCP config
-```
-
-### Multi-Project Demo
-```bash
-./scripts/deploy.sh multi status   # Show all teams
-oc project team-ops && ./scripts/deploy.sh tools   # 3 tools
-oc project team-hr && ./scripts/deploy.sh tools    # 8 tools
-oc project team-dev && ./scripts/deploy.sh tools   # 17 tools
-```
-
-### Cleanup After Demo
-```bash
-./scripts/deploy.sh multi cleanup  # Remove team namespaces
-```
-
-### All Deploy Commands
-
-| Command | Description |
-|---------|-------------|
-| `./scripts/deploy.sh phase1` | Deploy Weather MCP only |
-| `./scripts/deploy.sh phase2` | Deploy Weather + HR MCPs |
-| `./scripts/deploy.sh full` | Deploy all 4 MCP servers |
-| `./scripts/deploy.sh add weather` | Set to Weather only |
-| `./scripts/deploy.sh add hr` | Add HR MCP (Weather + HR) |
-| `./scripts/deploy.sh add jira` | Add Jira MCP (all MCPs) |
-| `./scripts/deploy.sh add github` | Add GitHub MCP (all MCPs) |
-| `./scripts/deploy.sh add all` | Add all 4 MCP servers |
-| `./scripts/deploy.sh reset` | Reset to Weather only |
-| `./scripts/deploy.sh status` | Show pods and routes |
-| `./scripts/deploy.sh tools` | List available tools |
-| `./scripts/deploy.sh config` | Show current MCP config |
-| `./scripts/deploy.sh multi setup` | Create team namespaces |
-| `./scripts/deploy.sh multi status` | Show all team status |
-| `./scripts/deploy.sh multi cleanup` | Remove team namespaces |
-
----
-
-## Backup & Recovery
-
-### If Live Deploy Fails
-
-Fall back to pre-setup environments:
-
-```bash
-# Skip to multi-project demo
-oc project team-hr
-./scripts/deploy.sh tools
-```
-
-**Say:** "Let me show you what it looks like when fully configured..."
-
-### If Pod Takes Too Long
-
-```bash
-# Check pod status
-oc get pods -n my-first-model | grep lsd
-
-# If stuck, force restart
-oc delete pod -l app=lsd-genai-playground -n my-first-model
-```
-
-### If Frontend Not Working
-
-Use curl to show API directly:
-
-```bash
-# List tools via API
+# Verify Phase 1 is active (should show 1 LLM model, 1 MCP server)
+echo "Verifying Phase 1..."
 oc exec deployment/lsd-genai-playground -n my-first-model -- \
-  curl -s http://localhost:8321/v1/tools | python3 -m json.tool
+  curl -s http://localhost:8321/v1/models | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+llms=[m for m in data.get('data',[]) if m.get('model_type')=='llm']
+print(f'Models: {len(llms)}')"
+
+oc exec deployment/lsd-genai-playground -n my-first-model -- \
+  curl -s http://localhost:8321/v1/tools | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+tools=data if isinstance(data,list) else data.get('data',[])
+mcps=set(t.get('toolgroup_id','') for t in tools if t.get('toolgroup_id','').startswith('mcp::'))
+print(f'MCP Servers: {len(mcps)}')"
 ```
 
-### If Network Issues
+**Expected Output:**
+```
+Models: 1
+MCP Servers: 1
+```
 
-Have screenshots/recordings as backup.
+### 4. Verify MCP Pods are Running
+
+```bash
+oc get pods -n my-first-model | grep -E "mcp|hr-|jira-|github-"
+```
+
+**Expected Output:** All 4 MCP server pods should be Running.
+
+### Pre-Recording Checklist
+
+- [ ] AI Assets ConfigMap deleted
+- [ ] LlamaStack on Phase 1 (1 model, 1 MCP)
+- [ ] All 4 MCP server pods running
+- [ ] Terminal in correct directory
+- [ ] Browser tabs ready (OpenShift AI, Frontend)
 
 ---
 
-## Available MCP Servers
+## Video Step 1: Deploy MCP Servers on OpenShift
 
-| MCP Server | Toolgroup ID | Tools | Endpoint |
-|------------|--------------|-------|----------|
-| **Weather** | `mcp::weather-data` | getforecast | `http://mcp-weather...svc.cluster.local:80/sse` |
-| **HR** | `mcp::hr-tools` | get_vacation_balance, get_employee_info, list_employees, list_job_openings, create_vacation_request | `http://hr-mcp-server...svc.cluster.local:8000/mcp` |
-| **Jira/Confluence** | `mcp::jira-confluence` | search_issues, get_issue_details, create_issue, search_confluence, list_projects | `http://jira-mcp-server...svc.cluster.local:8000/mcp` |
-| **GitHub** | `mcp::github-tools` | search_repositories, get_repository, list_issues, search_code, get_user | `http://github-mcp-server...svc.cluster.local:8000/mcp` |
+> 🎬 **Duration: ~2 min**
+> 
+> **Goal:** Show that 4 MCP servers are deployed as pods
 
-### Team Configurations
+### Commands to Run
 
-| Team | Namespace | MCP Servers | Tools |
-|------|-----------|-------------|-------|
-| Ops | team-ops | Weather | 3 |
-| HR | team-hr | Weather + HR | 8 |
-| Dev | team-dev | Weather + HR + Jira + GitHub | 17 |
+```bash
+# Show all MCP server pods
+oc get pods -n my-first-model | grep -E "mcp|hr-|jira-|github-"
+```
+
+**Expected Output:**
+```
+github-mcp-server-xxxxx    1/1     Running   0          4h
+hr-api-xxxxx               1/1     Running   0          5h
+hr-mcp-server-xxxxx        1/1     Running   0          5h
+jira-mcp-server-xxxxx      1/1     Running   0          5h
+mcp-weather-xxxxx          1/1     Running   0          3d
+```
+
+### What to Say
+
+> "Here we have 4 MCP servers deployed as pods on OpenShift:
+> - **Weather MCP** - provides weather data via OpenWeatherMap
+> - **HR MCP** - employee info, vacation balances, job openings
+> - **Jira/Confluence MCP** - issue tracking and documentation
+> - **GitHub MCP** - repository search and code operations
+> 
+> These are all running as standard Kubernetes deployments."
+
+### Optional: Show Deployment YAML
+
+```bash
+# Show one of the MCP server deployments
+cat manifests/mcp-servers/hr-mcp-server.yaml | head -40
+```
 
 ---
 
-## YAML Reference
+## Video Step 2: Register MCP Servers in AI Assets
 
-### The File to Edit
+> 🎬 **Duration: ~2 min**
+> 
+> **Goal:** Register MCP servers in OpenShift AI so they appear in the dashboard
 
-The LlamaStack configuration is stored in a ConfigMap:
-
-```bash
-oc get configmap llama-stack-config -n my-first-model -o yaml
-```
-
-### The Section to Edit: `tool_groups`
-
-```yaml
-tool_groups:
-# Built-in RAG tools (always keep)
-- toolgroup_id: builtin::rag
-  provider_id: rag-runtime
-
-# MCP Server entries - add/remove as needed:
-
-# Weather MCP
-- toolgroup_id: mcp::weather-data
-  provider_id: model-context-protocol
-  mcp_endpoint:
-    uri: http://mcp-weather.my-first-model.svc.cluster.local:80/sse
-
-# HR MCP (add this to enable HR tools)
-- toolgroup_id: mcp::hr-tools
-  provider_id: model-context-protocol
-  mcp_endpoint:
-    uri: http://hr-mcp-server.my-first-model.svc.cluster.local:8000/mcp
-
-# Jira/Confluence MCP (add this to enable Jira tools)
-- toolgroup_id: mcp::jira-confluence
-  provider_id: model-context-protocol
-  mcp_endpoint:
-    uri: http://jira-mcp-server.my-first-model.svc.cluster.local:8000/mcp
-
-# GitHub MCP (add this to enable GitHub tools)
-- toolgroup_id: mcp::github-tools
-  provider_id: model-context-protocol
-  mcp_endpoint:
-    uri: http://github-mcp-server.my-first-model.svc.cluster.local:8000/mcp
-
-server:
-  port: 8321
-```
-
-### Pre-built Configuration Files
-
-| File | MCP Servers | Tools |
-|------|-------------|-------|
-| `llama-stack-config-phase1.yaml` | Weather | 3 |
-| `llama-stack-config-phase2.yaml` | Weather + HR | 8 |
-| `llama-stack-config-full.yaml` | All 4 | 17 |
-
-### Manual Config Switch (For Demo)
+### Commands to Run
 
 ```bash
-# Switch to Phase 2 (Weather + HR)
-oc create configmap llama-stack-config \
-  --from-file=run.yaml=manifests/llamastack/llama-stack-config-phase2.yaml \
-  -n my-first-model --dry-run=client -o yaml | oc apply -f -
+# Apply the AI Assets ConfigMap
+oc apply -f manifests/ai-assets/gen-ai-aa-mcp-servers.yaml
+```
 
-# Restart LlamaStack
+**Expected Output:**
+```
+configmap/gen-ai-aa-mcp-servers created
+```
+
+### What to Say
+
+> "Now let's register these MCP servers as AI Assets in OpenShift AI.
+> This ConfigMap tells OpenShift AI about our MCP servers so they appear in the dashboard."
+
+### Show in Browser
+
+1. Open **OpenShift AI Dashboard**: `https://rhods-dashboard-redhat-ods-applications.apps.YOUR_CLUSTER`
+2. Navigate to: **Settings** → **AI asset endpoints**
+3. Show the 4 MCP servers now appearing
+
+### Optional: Show the ConfigMap Content
+
+```bash
+# Show what we just applied
+cat manifests/ai-assets/gen-ai-aa-mcp-servers.yaml
+```
+
+---
+
+## Video Step 3: Test in GenAI Studio Playground
+
+> 🎬 **Duration: ~3 min**
+> 
+> **Goal:** Test MCP servers using the built-in AI Playground
+
+### Browser Steps
+
+1. In OpenShift AI Dashboard, go to: **GenAI Studio** → **Playground**
+2. Select the **Weather MCP Server** from the list
+3. Type a test query:
+
+```
+What is the weather in New York?
+```
+
+4. Show the tool being called and the response
+
+### What to Say
+
+> "OpenShift AI provides a built-in playground where we can test MCP servers directly.
+> Let me select the Weather MCP and ask about the weather...
+> 
+> You can see the agent is calling the `getforecast` tool from the Weather MCP server.
+> This confirms our MCP servers are working correctly."
+
+---
+
+## Video Step 4: LlamaStack Distribution Phase 1
+
+> 🎬 **Duration: ~3 min**
+> 
+> **Goal:** Show LlamaStack with 1 provider (vLLM) and 1 MCP (Weather)
+
+### Commands to Run
+
+```bash
+# Show current LlamaStack configuration
+oc get configmap llama-stack-config -n my-first-model -o yaml | grep -A50 "run.yaml:" | head -60
+```
+
+### What to Say
+
+> "Now let's look at our LlamaStack Distribution. This is the orchestration layer that connects our LLM to the MCP servers.
+> 
+> In Phase 1, we have:
+> - **1 inference provider**: vLLM running Llama 3.2-3B locally
+> - **1 MCP server**: Weather only
+> 
+> This is a minimal configuration - perfect for a team that only needs weather data."
+
+### Show Models and Tools via API
+
+```bash
+# Show available models (should be 1)
+oc exec deployment/lsd-genai-playground -n my-first-model -- \
+  curl -s http://localhost:8321/v1/models | python3 -m json.tool | grep -A3 '"model_type": "llm"'
+```
+
+```bash
+# Show available tools (should show Weather only)
+oc exec deployment/lsd-genai-playground -n my-first-model -- \
+  curl -s http://localhost:8321/v1/tools | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+tools=data if isinstance(data,list) else data.get('data',[])
+for t in tools:
+    print(f\"  - {t.get('toolgroup_id')}: {t.get('name')}\")"
+```
+
+**Expected Output:**
+```
+  - builtin::rag: insert_into_memory
+  - builtin::rag: knowledge_search
+  - mcp::weather-data: getforecast
+```
+
+---
+
+## Video Step 5: Client Integration
+
+> 🎬 **Duration: ~3 min**
+> 
+> **Goal:** Show how clients can discover models and tools
+
+### Option A: Use Frontend UI
+
+```bash
+# Get Frontend URL
+echo "https://$(oc get route llamastack-multi-mcp-demo -n my-first-model -o jsonpath='{.spec.host}')"
+```
+
+Open the URL and show:
+1. **Model dropdown** - should show only `vllm-inference/llama-32-3b-instruct`
+2. **MCP sidebar** - should show only Weather MCP
+3. **Refresh button** - to reload from LlamaStack
+
+### Option B: Use Jupyter Notebook
+
+Upload `notebooks/llamastack_client_demo.ipynb` to a Workbench and run cells to show:
+- Listing models
+- Listing tools
+- Making a chat completion
+
+### What to Say
+
+> "Clients can easily discover what's available in LlamaStack.
+> 
+> Right now we see:
+> - **1 model**: Our local vLLM running Llama 3.2-3B
+> - **1 MCP server**: Weather with the getforecast tool
+> 
+> The client automatically detects these from LlamaStack's API."
+
+### Sample Code to Show
+
+```python
+import requests
+
+# List models
+response = requests.get("http://llamastack:8321/v1/models")
+models = [m for m in response.json()["data"] if m["model_type"] == "llm"]
+print(f"Available models: {len(models)}")
+
+# List tools
+response = requests.get("http://llamastack:8321/v1/tools")
+tools = response.json()
+print(f"Available tools: {len(tools)}")
+```
+
+---
+
+## Video Step 6: Iterate LlamaStack Distribution
+
+> 🎬 **Duration: ~3 min**
+> 
+> **Goal:** Add 2 more MCPs + Azure OpenAI provider
+
+### Commands to Run
+
+```bash
+# Show the Phase 2 config (what we're about to apply)
+echo "=== Phase 2 adds: ==="
+echo "  - Azure OpenAI provider"
+echo "  - HR MCP server"
+echo "  - Jira/Confluence MCP server"
+echo ""
+
+# Apply Phase 2 configuration
+oc apply -f manifests/llamastack/llama-stack-config-phase2.yaml
+```
+
+**Expected Output:**
+```
+configmap/llama-stack-config configured
+```
+
+```bash
+# Restart LlamaStack to pick up new config
 oc delete pod -l app=lsd-genai-playground -n my-first-model
+
+echo "Waiting for LlamaStack to restart..."
+sleep 30
+
+# Verify pod is running
+oc get pods -n my-first-model | grep lsd-genai-playground
+```
+
+### What to Say
+
+> "Now let's iterate our LlamaStack Distribution. I'm going to:
+> 1. Add **Azure OpenAI** as a second inference provider
+> 2. Add **HR MCP** for employee management
+> 3. Add **Jira/Confluence MCP** for project tracking
+> 
+> This is all done by updating a single ConfigMap - no code changes needed.
+> 
+> *[Apply the config]*
+> 
+> Now I'll restart the LlamaStack pod to pick up the new configuration...
+> 
+> *[Wait for restart]*"
+
+### Show the Diff (Optional)
+
+```bash
+# Show what changed
+diff manifests/llamastack/llama-stack-config-phase1.yaml \
+     manifests/llamastack/llama-stack-config-phase2.yaml | head -50
+```
+
+---
+
+## Video Step 7: Show Updated Configuration
+
+> 🎬 **Duration: ~4 min**
+> 
+> **Goal:** Show 2 models, 3 MCPs, and demo switching providers
+
+### Commands to Run
+
+```bash
+# Verify new models (should be 2)
+oc exec deployment/lsd-genai-playground -n my-first-model -- \
+  curl -s http://localhost:8321/v1/models | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+llms=[m for m in data.get('data',[]) if m.get('model_type')=='llm']
+print(f'LLM Models: {len(llms)}')
+for m in llms:
+    print(f\"  - {m.get('identifier')} ({m.get('provider_id')})\")"
+```
+
+**Expected Output:**
+```
+LLM Models: 2
+  - vllm-inference/llama-32-3b-instruct (vllm-inference)
+  - azure-openai/gpt-4.1-mini (azure-openai)
+```
+
+```bash
+# Verify new tools (should show 3 MCP servers)
+oc exec deployment/lsd-genai-playground -n my-first-model -- \
+  curl -s http://localhost:8321/v1/tools | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+tools=data if isinstance(data,list) else data.get('data',[])
+groups={}
+for t in tools:
+    tg=t.get('toolgroup_id','')
+    if tg not in groups: groups[tg]=0
+    groups[tg]+=1
+print(f'Total tools: {len(tools)}')
+for tg,count in sorted(groups.items()):
+    print(f'  - {tg}: {count} tools')"
+```
+
+**Expected Output:**
+```
+Total tools: 13
+  - builtin::rag: 2 tools
+  - mcp::hr-tools: 5 tools
+  - mcp::jira-confluence: 5 tools
+  - mcp::weather-data: 1 tools
+```
+
+### Refresh Frontend UI
+
+```bash
+# Restart frontend to pick up changes
+oc delete pod -l app=llamastack-multi-mcp-demo -n my-first-model
+sleep 15
+
+# Get URL
+echo "https://$(oc get route llamastack-multi-mcp-demo -n my-first-model -o jsonpath='{.spec.host}')"
+```
+
+Open the Frontend and show:
+1. **Model dropdown** now has 2 options
+2. **MCP sidebar** now shows 3 servers (Weather, HR, Jira)
+3. **Switch between models** - select Azure OpenAI
+
+### Demo HR MCP
+
+Type in the chat:
+```
+List all employees
+```
+
+### What to Say
+
+> "After the restart, let's see what's changed...
+> 
+> Now we have:
+> - **2 models**: Local vLLM AND Azure OpenAI
+> - **3 MCP servers**: Weather, HR, and Jira
+> 
+> *[Show Frontend]*
+> 
+> The frontend automatically detected the new models and MCP servers.
+> I can now switch between local vLLM and Azure OpenAI with a single dropdown.
+> 
+> Let me test the HR MCP by asking to list employees...
+> 
+> *[Type query and show response]*
+> 
+> The agent is now using the HR MCP to fetch employee data.
+> 
+> This demonstrates how easy it is to iterate on a LlamaStack Distribution - 
+> just update the YAML and restart. No code changes, no redeployment of the application."
+
+---
+
+## Reset Commands
+
+### Full Reset (Before Recording)
+
+```bash
+cd /Users/dayeo/LlamaStack-MCP-Demo
+
+# 1. Delete AI Assets
+oc delete configmap gen-ai-aa-mcp-servers -n redhat-ods-applications
+
+# 2. Apply Phase 1 config
+oc apply -f manifests/llamastack/llama-stack-config-phase1.yaml
+
+# 3. Restart LlamaStack
+oc delete pod -l app=lsd-genai-playground -n my-first-model
+
+# 4. Restart Frontend
+oc delete pod -l app=llamastack-multi-mcp-demo -n my-first-model
+
+# 5. Wait
+sleep 30
+
+# 6. Verify
+echo "=== Verification ==="
+oc get pods -n my-first-model | grep -E "lsd-genai|llamastack-multi"
+```
+
+### Quick Reset (Between Takes)
+
+```bash
+# Just reset LlamaStack to Phase 1
+oc apply -f manifests/llamastack/llama-stack-config-phase1.yaml
+oc delete pod -l app=lsd-genai-playground -n my-first-model
+sleep 30
 ```
 
 ---
 
 ## Troubleshooting
 
-### LlamaStack not picking up new config
+### LlamaStack Pod Not Starting
 
 ```bash
+# Check pod status
+oc get pods -n my-first-model | grep lsd
+
+# Check logs
+oc logs deployment/lsd-genai-playground -n my-first-model --tail=50
+```
+
+### Tools Not Showing Up
+
+```bash
+# Check LlamaStack config
+oc get configmap llama-stack-config -n my-first-model -o yaml | grep -A5 "tool_groups"
+
 # Force restart
 oc delete pod -l app=lsd-genai-playground -n my-first-model
-
-# Wait and check
-sleep 30
-oc get pods -n my-first-model | grep lsd
 ```
 
-### MCP server not connecting
+### Frontend Not Updating
 
 ```bash
-# Check if MCP server pod is running
-oc get pods -n my-first-model | grep mcp
-
-# Check MCP server logs
-oc logs deployment/hr-mcp-server -n my-first-model --tail=20
+# Force restart frontend
+oc delete pod -l app=llamastack-multi-mcp-demo -n my-first-model
+sleep 15
 ```
 
-### Tools not showing up
+### Azure OpenAI Not Working
 
 ```bash
-# Check LlamaStack logs for errors
-oc logs deployment/lsd-genai-playground -n my-first-model --tail=50 | grep -i error
+# Check if secret exists
+oc get secret azure-openai-secret -n my-first-model
 
-# Verify config has the MCP server
-oc get configmap llama-stack-config -n my-first-model -o jsonpath='{.data.run\.yaml}' | grep -A4 "toolgroup_id: mcp::"
-```
-
-### Pod stuck in pending/crash
-
-```bash
-# Check pod events
-oc describe pod -l app=lsd-genai-playground -n my-first-model | tail -20
-
-# Check resources
-oc get pods -n my-first-model -o wide
+# Check LlamaStack logs for Azure errors
+oc logs deployment/lsd-genai-playground -n my-first-model | grep -i azure
 ```
 
 ---
 
-## Summary
+## Quick Reference Card
 
-### Before Demo
-1. ✅ Run `./scripts/deploy.sh multi setup`
-2. ✅ Run `./scripts/deploy.sh reset` in `my-first-model`
-3. ✅ Verify frontend is accessible
-4. ✅ Test demo scenarios
+| Step | Action | Command |
+|------|--------|---------|
+| **1** | Show MCP pods | `oc get pods -n my-first-model \| grep -E "mcp\|hr-\|jira-\|github-"` |
+| **2** | Register AI Assets | `oc apply -f manifests/ai-assets/gen-ai-aa-mcp-servers.yaml` |
+| **3** | Test in Playground | *(Browser: OpenShift AI → GenAI Studio → Playground)* |
+| **4** | Show Phase 1 | `oc exec deployment/lsd-genai-playground -- curl -s http://localhost:8321/v1/tools` |
+| **5** | Show Frontend | `echo "https://$(oc get route llamastack-multi-mcp-demo -n my-first-model -o jsonpath='{.spec.host}')"` |
+| **6** | Apply Phase 2 | `oc apply -f manifests/llamastack/llama-stack-config-phase2.yaml && oc delete pod -l app=lsd-genai-playground -n my-first-model` |
+| **7** | Verify Phase 2 | `oc exec deployment/lsd-genai-playground -- curl -s http://localhost:8321/v1/models` |
 
-### During Demo
-1. 🎯 Show live `add hr` deployment (8 min)
-2. 🎯 Show multi-project comparison (8 min)
-3. 🎯 Interactive frontend demo (10 min)
+---
 
-### Key Messages
-- **YAML-based control** - Admins configure via ConfigMap
-- **Role-based access** - Different teams get different tools
-- **Easy to change** - Just update config and restart
-- **Auditable** - All changes in version-controlled YAML
-- **No code changes** - Users don't modify applications
+## URLs
+
+| Resource | URL |
+|----------|-----|
+| **Frontend UI** | `https://llamastack-multi-mcp-demo-my-first-model.apps.ocp.f68xw.sandbox580.opentlc.com` |
+| **OpenShift AI** | `https://rhods-dashboard-redhat-ods-applications.apps.ocp.f68xw.sandbox580.opentlc.com` |
+
+---
+
+## Files Reference
+
+| File | Purpose |
+|------|---------|
+| `manifests/llamastack/llama-stack-config-phase1.yaml` | vLLM + Weather only |
+| `manifests/llamastack/llama-stack-config-phase2.yaml` | vLLM + Azure + Weather + HR + Jira |
+| `manifests/ai-assets/gen-ai-aa-mcp-servers.yaml` | AI Assets registration |
+| `manifests/mcp-servers/*.yaml` | MCP server deployments |
+| `notebooks/llamastack_client_demo.ipynb` | Client integration demo |

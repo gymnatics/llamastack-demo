@@ -45,7 +45,6 @@ Thumbs.db
 *.temp
 *.bak
 
-
 # Internal project documents (not for public repo)
 docs/PRD.md
 docs/PROJECT-LOG.md

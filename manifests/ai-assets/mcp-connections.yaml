@@ -1,0 +1,63 @@
+# AI Asset Connections for MCP Servers
+# These secrets make MCP servers visible in the OpenShift AI Dashboard
+# under Data Connections / AI Assets
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mcp-weather-connection
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    opendatahub.io/connection-type-protocol: "uri"
+    opendatahub.io/connection-type-ref: "uri-v1"
+    openshift.io/display-name: "Weather MCP Server"
+    openshift.io/description: "OpenWeatherMap MCP Server for weather forecasts"
+type: Opaque
+stringData:
+  URI: "http://mcp-weather.my-first-model.svc.cluster.local:80/sse"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mcp-hr-connection
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    opendatahub.io/connection-type-protocol: "uri"
+    opendatahub.io/connection-type-ref: "uri-v1"
+    openshift.io/display-name: "HR Tools MCP Server"
+    openshift.io/description: "HR MCP Server for employee info, vacation, job openings"
+type: Opaque
+stringData:
+  URI: "http://hr-mcp-server.my-first-model.svc.cluster.local:8000/mcp"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mcp-jira-connection
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    opendatahub.io/connection-type-protocol: "uri"
+    opendatahub.io/connection-type-ref: "uri-v1"
+    openshift.io/display-name: "Jira/Confluence MCP Server"
+    openshift.io/description: "Jira/Confluence MCP Server for issue tracking and documentation"
+type: Opaque
+stringData:
+  URI: "http://jira-mcp-server.my-first-model.svc.cluster.local:8000/mcp"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mcp-github-connection
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    opendatahub.io/connection-type-protocol: "uri"
+    opendatahub.io/connection-type-ref: "uri-v1"
+    openshift.io/display-name: "GitHub MCP Server"
+    openshift.io/description: "GitHub MCP Server for repository search, issues, code search"
+type: Opaque
+stringData:
+  URI: "http://github-mcp-server.my-first-model.svc.cluster.local:8000/mcp"
