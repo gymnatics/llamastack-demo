@@ -99,19 +99,19 @@ llamastack-demo/
 Show how different teams get different LlamaStack distributions with different MCP servers:
 
 ```bash
-# Setup multi-project demo (creates 3 namespaces)
+# One command to set up all 3 projects!
 ./scripts/setup-multi-project.sh
 
-# This creates:
-#   team-hr      → Weather + HR tools
-#   team-dev     → All development tools (Weather, Jira, GitHub)
-#   team-ops     → Weather only (minimal)
+# Hardcoded namespaces (for quick demo):
+#   team-hr   → Weather + HR tools
+#   team-dev  → All tools (Weather, HR, Jira, GitHub)
+#   team-ops  → Weather only
 
-# Compare tools across projects
-./scripts/setup-multi-project.sh compare
-
-# Show status of all projects
+# Wait ~60s, then check status
 ./scripts/setup-multi-project.sh status
+
+# Compare MCP configs across projects
+./scripts/setup-multi-project.sh compare
 
 # Cleanup when done
 ./scripts/setup-multi-project.sh cleanup
@@ -121,7 +121,7 @@ Show how different teams get different LlamaStack distributions with different M
 - Each project has its own LlamaStack distribution
 - Admins configure which MCP servers each team gets via YAML
 - Teams can only access tools assigned to their project
-- Easy to add new teams with different tool configurations
+- Namespaces are hardcoded for quick, repeatable demos
 
 ---
 

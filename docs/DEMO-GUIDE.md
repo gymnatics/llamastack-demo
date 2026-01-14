@@ -71,22 +71,16 @@ Each team gets their own **namespace** with their own **LlamaStack distribution*
 ### Setup Multi-Project Demo
 
 ```bash
-# Create 3 project namespaces
-oc new-project team-hr
-oc new-project team-dev
-oc new-project team-platform
+# One command to set up all 3 projects!
+./scripts/setup-multi-project.sh
 
-# Deploy HR Team's LlamaStack (Weather + HR)
-oc project team-hr
-./scripts/deploy.sh phase2
+# This creates (hardcoded namespaces for quick setup):
+#   team-hr   → Weather + HR tools (phase2)
+#   team-dev  → All tools (full)
+#   team-ops  → Weather only (phase1)
 
-# Deploy Dev Team's LlamaStack (Weather + Jira + GitHub)
-oc project team-dev
-./scripts/deploy.sh full
-
-# Deploy Platform Team's LlamaStack (All tools)
-oc project team-platform
-./scripts/deploy.sh full
+# Wait ~60s for pods to start, then check status
+./scripts/setup-multi-project.sh status
 ```
 
 ### Demo Walkthrough
@@ -188,32 +182,29 @@ oc get route llamastack-multi-mcp-demo -n team-platform -o jsonpath='{.spec.host
 4. **Scalability**: Easy to add new teams with different tool sets
 5. **YAML-based**: All configuration is declarative and version-controlled
 
-### Quick Multi-Project Setup Script
+### Quick Commands Reference
 
 ```bash
-#!/bin/bash
-# setup-multi-project-demo.sh
+# Setup all projects (one command!)
+./scripts/setup-multi-project.sh
 
-# HR Team - Weather + HR
-oc new-project team-hr 2>/dev/null || oc project team-hr
-./scripts/deploy.sh phase2
+# Check status of all projects
+./scripts/setup-multi-project.sh status
 
-# Dev Team - All tools
-oc new-project team-dev 2>/dev/null || oc project team-dev
-./scripts/deploy.sh full
+# Compare MCP configs across projects
+./scripts/setup-multi-project.sh compare
 
-# Show results
-echo ""
-echo "=== Multi-Project Demo Ready ==="
-echo ""
-echo "HR Team (team-hr):"
-./scripts/deploy.sh tools 2>/dev/null | head -15
-
-echo ""
-echo "Dev Team (team-dev):"
-oc project team-dev >/dev/null
-./scripts/deploy.sh tools 2>/dev/null | head -20
+# Cleanup when done
+./scripts/setup-multi-project.sh cleanup
 ```
+
+### Hardcoded Namespaces
+
+| Namespace | Phase | MCP Servers |
+|-----------|-------|-------------|
+| `team-hr` | phase2 | Weather + HR |
+| `team-dev` | full | Weather + HR + Jira + GitHub |
+| `team-ops` | phase1 | Weather only |
 
 ---
 
