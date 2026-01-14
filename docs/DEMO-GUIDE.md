@@ -62,33 +62,59 @@ oc project my-demo-namespace
 ### Concept
 
 In an enterprise, different teams need different tools:
+- **Ops Team** → Weather only (minimal)
 - **HR Team** → Weather + HR tools
-- **Dev Team** → Weather + Jira + GitHub tools  
-- **Full Platform** → All tools available
+- **Dev Team** → All tools (Weather, HR, Jira, GitHub)
 
-Each team gets their own **namespace** with their own **LlamaStack distribution** configured with only the MCP servers they need.
+This demo shows how admins can configure different MCP server access for different teams by switching the LlamaStack configuration.
 
-### Setup Multi-Project Demo
+### Demo: Team Configuration Switching
 
 ```bash
-# One command to set up all 3 projects!
-./scripts/setup-multi-project.sh
+# Show current configuration
+./scripts/deploy.sh multi status
 
-# This creates (hardcoded namespaces for quick setup):
-#   team-hr   → Weather + HR tools (phase2)
-#   team-dev  → All tools (full)
-#   team-ops  → Weather only (phase1)
+# Switch to Ops Team config (Weather only - 3 tools)
+./scripts/deploy.sh multi ops
+sleep 30
+./scripts/deploy.sh tools
 
-# Wait ~60s for pods to start, then check status
-./scripts/setup-multi-project.sh status
+# Switch to HR Team config (Weather + HR - 10 tools)
+./scripts/deploy.sh multi hr
+sleep 30
+./scripts/deploy.sh tools
+
+# Switch to Dev Team config (All 4 MCPs - 20+ tools)
+./scripts/deploy.sh multi dev
+sleep 30
+./scripts/deploy.sh tools
 ```
 
 ### Demo Walkthrough
 
-#### Step 1: Show HR Team's Tools
+#### Step 1: Start with Ops Team (Minimal Tools)
 
 ```bash
-oc project team-hr
+./scripts/deploy.sh multi ops
+# Wait 30 seconds for restart
+./scripts/deploy.sh tools
+```
+
+**Expected output:**
+```
+Total: 3 tools
+
+mcp::weather-data:
+  - getforecast
+```
+
+**Demo point:** "Ops team only has access to Weather tools - minimal footprint for monitoring."
+
+#### Step 2: Switch to HR Team (Add HR Tools)
+
+```bash
+./scripts/deploy.sh multi hr
+# Wait 30 seconds for restart
 ./scripts/deploy.sh tools
 ```
 
@@ -108,12 +134,13 @@ mcp::hr-tools:
   - get_performance_review
 ```
 
-**Demo point:** "HR team only has access to Weather and HR tools - no GitHub or Jira access."
+**Demo point:** "HR team has Weather + HR tools - they can check vacation balances and employee info."
 
-#### Step 2: Show Dev Team's Tools
+#### Step 3: Switch to Dev Team (All Tools)
 
 ```bash
-oc project team-dev
+./scripts/deploy.sh multi dev
+# Wait 30 seconds for restart
 ./scripts/deploy.sh tools
 ```
 
@@ -121,90 +148,51 @@ oc project team-dev
 ```
 Total: 20+ tools
 
-mcp::weather-data:
-  - getforecast
-
-mcp::jira-confluence:
-  - search_issues
-  - get_issue_details
-  - create_issue
-  - search_confluence
-  - list_projects
-
-mcp::github-tools:
-  - search_repositories
-  - get_repository
-  - list_issues
-  - search_code
-  - get_user
+mcp::weather-data, mcp::hr-tools, mcp::jira-confluence, mcp::github-tools
 ```
 
-**Demo point:** "Dev team has Weather, Jira, and GitHub - the tools they need for development workflows."
+**Demo point:** "Dev team has all tools - full development workflow with Jira and GitHub integration."
 
-#### Step 3: Compare Configurations
+#### Step 4: Show the Configuration Change
 
 ```bash
-# Show HR team's config
-echo "=== HR Team LlamaStack Config ==="
-oc project team-hr
-oc get configmap llama-stack-config -o jsonpath='{.data.run\.yaml}' | grep -A4 "toolgroup_id: mcp::"
-
-echo ""
-echo "=== Dev Team LlamaStack Config ==="
-oc project team-dev
-oc get configmap llama-stack-config -o jsonpath='{.data.run\.yaml}' | grep -A4 "toolgroup_id: mcp::"
+./scripts/deploy.sh config
 ```
 
-**Demo point:** "Each project has its own LlamaStack ConfigMap with different MCP servers configured."
-
-#### Step 4: Show Different Frontend URLs
-
-```bash
-echo "=== Project Frontend URLs ==="
-echo ""
-echo "HR Team:"
-oc get route llamastack-multi-mcp-demo -n team-hr -o jsonpath='{.spec.host}' 2>/dev/null && echo ""
-echo ""
-echo "Dev Team:"
-oc get route llamastack-multi-mcp-demo -n team-dev -o jsonpath='{.spec.host}' 2>/dev/null && echo ""
-echo ""
-echo "Platform Team:"
-oc get route llamastack-multi-mcp-demo -n team-platform -o jsonpath='{.spec.host}' 2>/dev/null && echo ""
-```
-
-**Demo point:** "Each team has their own frontend URL. When they open it, they only see the tools available to their team."
+**Demo point:** "The admin changed the LlamaStack ConfigMap to add/remove MCP servers. This is how you control which tools each team can access."
 
 ### Key Talking Points
 
-1. **Isolation**: Each project has its own LlamaStack distribution
-2. **Customization**: Admins configure which MCP servers each team gets
-3. **Security**: Teams can't access tools they shouldn't have
-4. **Scalability**: Easy to add new teams with different tool sets
-5. **YAML-based**: All configuration is declarative and version-controlled
+1. **YAML-based Control**: Admins configure MCP access via ConfigMap
+2. **Role-based Access**: Different teams get different tools
+3. **Easy to Change**: Just update the config and restart LlamaStack
+4. **Audit Trail**: All changes are in version-controlled YAML files
+5. **No Code Changes**: Users don't need to modify their applications
 
 ### Quick Commands Reference
 
 ```bash
-# Setup all projects (one command!)
-./scripts/setup-multi-project.sh
+# Show current configuration
+./scripts/deploy.sh multi status
 
-# Check status of all projects
-./scripts/setup-multi-project.sh status
+# Switch to different team configs
+./scripts/deploy.sh multi ops    # Ops: Weather only (3 tools)
+./scripts/deploy.sh multi hr     # HR: Weather + HR (10 tools)
+./scripts/deploy.sh multi dev    # Dev: All 4 MCPs (20+ tools)
 
-# Compare MCP configs across projects
-./scripts/setup-multi-project.sh compare
-
-# Cleanup when done
-./scripts/setup-multi-project.sh cleanup
+# Or use the deploy.sh add commands
+./scripts/deploy.sh add weather  # Same as 'multi ops'
+./scripts/deploy.sh add hr       # Same as 'multi hr'
+./scripts/deploy.sh add all      # Same as 'multi dev'
 ```
 
-### Hardcoded Namespaces
+### Team Configurations
 
-| Namespace | Phase | MCP Servers |
-|-----------|-------|-------------|
-| `team-hr` | phase2 | Weather + HR |
-| `team-dev` | full | Weather + HR + Jira + GitHub |
-| `team-ops` | phase1 | Weather only |
+| Team | Config | MCP Servers | Tools |
+|------|--------|-------------|-------|
+| Ops | phase1 | Weather | 3 |
+| HR | phase2 | Weather + HR | 10 |
+| Dev | full | Weather + HR + Jira + GitHub | 20+ |
 
 ---
 

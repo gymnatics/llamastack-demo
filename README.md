@@ -96,32 +96,26 @@ llamastack-demo/
 
 ## 🏢 Multi-Project Demo (Key Feature)
 
-Show how different teams get different LlamaStack distributions with different MCP servers:
+Show how different teams get different MCP server access by switching configurations:
 
 ```bash
-# One command to set up all 3 projects!
-./scripts/setup-multi-project.sh
+# Show current configuration
+./scripts/deploy.sh multi status
 
-# Hardcoded namespaces (for quick demo):
-#   team-hr   → Weather + HR tools
-#   team-dev  → All tools (Weather, HR, Jira, GitHub)
-#   team-ops  → Weather only
+# Switch between team configurations:
+./scripts/deploy.sh multi ops    # Ops Team: Weather only (3 tools)
+./scripts/deploy.sh multi hr     # HR Team: Weather + HR (10 tools)
+./scripts/deploy.sh multi dev    # Dev Team: All 4 MCPs (20+ tools)
 
-# Wait ~60s, then check status
-./scripts/setup-multi-project.sh status
-
-# Compare MCP configs across projects
-./scripts/setup-multi-project.sh compare
-
-# Cleanup when done
-./scripts/setup-multi-project.sh cleanup
+# Wait 30s after each switch, then check tools
+./scripts/deploy.sh tools
 ```
 
 **Demo talking points:**
-- Each project has its own LlamaStack distribution
-- Admins configure which MCP servers each team gets via YAML
-- Teams can only access tools assigned to their project
-- Namespaces are hardcoded for quick, repeatable demos
+- Admins control MCP access via YAML configuration
+- Different teams get different tool sets based on their needs
+- Easy to add/remove MCP servers without code changes
+- All configuration is declarative and auditable
 
 ---
 

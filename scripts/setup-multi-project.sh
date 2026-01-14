@@ -1,13 +1,21 @@
 #!/bin/bash
 # Multi-Project Demo Setup
 #
-# Creates multiple namespaces with different LlamaStack configurations
-# to demonstrate how different teams get different MCP servers.
+# Demonstrates how different teams/projects can have different LlamaStack distributions
+# with different MCP server configurations, all sharing the same model endpoint.
+#
+# Architecture:
+#   - Model serving (vLLM/GPU) runs in the source namespace
+#   - Each team gets their own namespace with their own LlamaStack + MCP servers
+#   - All LlamaStacks point to the shared model endpoint (cross-namespace access)
 #
 # Usage:
-#   ./setup-multi-project.sh           # Setup all projects
-#   ./setup-multi-project.sh status    # Show status of all projects
-#   ./setup-multi-project.sh cleanup   # Remove demo projects
+#   ./setup-multi-project.sh setup     # Create all team namespaces
+#   ./setup-multi-project.sh status    # Show status of all teams
+#   ./setup-multi-project.sh cleanup   # Delete team namespaces
+#   ./setup-multi-project.sh hr        # Switch current ns to HR config
+#   ./setup-multi-project.sh dev       # Switch current ns to Dev config
+#   ./setup-multi-project.sh ops       # Switch current ns to Ops config
 
 set -e
 
@@ -22,21 +30,54 @@ RED='\033[0;31m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Hardcoded project namespaces for quick demo setup
+# Team namespaces (hardcoded for quick demo)
 NS_HR="team-hr"
 NS_DEV="team-dev"
 NS_OPS="team-ops"
+
+# Get current namespace
+CURRENT_NS=$(oc project -q 2>/dev/null || echo "my-first-model")
+
+# Auto-detect model endpoint from existing LlamaStack config
+detect_model_endpoint() {
+    local ns="${1:-$CURRENT_NS}"
+    
+    # Try to get from existing LlamaStack config
+    local endpoint=$(oc get configmap llama-stack-config -n "$ns" -o jsonpath='{.data.run\.yaml}' 2>/dev/null | \
+        grep -A5 "provider_type: remote::vllm" | grep "url:" | head -1 | sed 's/.*url: //' | tr -d ' ')
+    
+    if [ -n "$endpoint" ]; then
+        echo "$endpoint"
+        return
+    fi
+    
+    # Try my-first-model namespace
+    endpoint=$(oc get configmap llama-stack-config -n "my-first-model" -o jsonpath='{.data.run\.yaml}' 2>/dev/null | \
+        grep -A5 "provider_type: remote::vllm" | grep "url:" | head -1 | sed 's/.*url: //' | tr -d ' ')
+    
+    if [ -n "$endpoint" ]; then
+        echo "$endpoint"
+        return
+    fi
+    
+    echo ""
+}
+
+MODEL_ENDPOINT="${MODEL_ENDPOINT:-$(detect_model_endpoint)}"
+NS_MODEL=$(echo "$MODEL_ENDPOINT" | sed -n 's/.*-predictor\.\([^.]*\)\.svc.*/\1/p')
 
 print_header() {
     echo ""
     echo -e "${CYAN}╔════════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║${NC}  ${BLUE}🦙 LlamaStack Multi-Project Demo${NC}"
-    echo -e "${CYAN}║${NC}  Demonstrating different LlamaStack distributions per project"
+    if [ -n "$NS_MODEL" ]; then
+        echo -e "${CYAN}║${NC}  Model namespace: ${GREEN}$NS_MODEL${NC}"
+    fi
     echo -e "${CYAN}╚════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
 
-deploy_to_namespace() {
+deploy_team() {
     local ns=$1
     local phase=$2
     local desc=$3
@@ -44,26 +85,64 @@ deploy_to_namespace() {
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${BLUE}📁 $ns${NC} - $desc"
     
-    # Create namespace if needed
-    oc get namespace "$ns" &>/dev/null || oc new-project "$ns" 2>/dev/null || oc create namespace "$ns"
+    # Check if model endpoint was detected
+    if [ -z "$MODEL_ENDPOINT" ]; then
+        echo -e "   ${RED}❌ No model endpoint detected!${NC}"
+        echo -e "   ${YELLOW}Set MODEL_ENDPOINT env var or ensure LlamaStack config exists${NC}"
+        return 1
+    fi
     
-    # Apply manifests directly with namespace substitution (faster than switching projects)
-    echo -e "   Deploying $phase..."
-    sed "s/my-first-model/$ns/g" "$MANIFEST_DIR/$phase/deploy-$phase.yaml" | oc apply -f - 2>&1 | grep -E "created|configured|unchanged" | head -5 | sed 's/^/   /'
+    # Create namespace if needed
+    if ! oc get namespace "$ns" &>/dev/null; then
+        echo -e "   Creating namespace..."
+        oc new-project "$ns" 2>/dev/null || oc create namespace "$ns"
+    else
+        oc project "$ns" >/dev/null 2>&1
+    fi
+    
+    # Deploy MCP servers and LlamaStack config for this phase
+    echo -e "   Deploying $phase configuration..."
+    
+    local manifest_file="$MANIFEST_DIR/$phase/deploy-$phase.yaml"
+    if [ ! -f "$manifest_file" ]; then
+        echo -e "   ${RED}❌ Manifest not found: $manifest_file${NC}"
+        return 1
+    fi
+    
+    # Replace namespace patterns and ensure model endpoint points to source namespace
+    sed -e "s/llamastack-$phase/$ns/g" \
+        -e "s/my-first-model/$ns/g" \
+        "$manifest_file" | \
+        sed "s|\(llama-32-3b-instruct-predictor\)\.$ns\.|\1.$NS_MODEL.|g" | \
+        oc apply -f - 2>&1 | grep -cE "created|configured|unchanged" | xargs -I {} echo "   {} resources applied"
+    
     echo -e "   ${GREEN}✓ Done${NC}"
     echo ""
 }
 
-setup_projects() {
+setup_all() {
     print_header
     
+    if [ -z "$MODEL_ENDPOINT" ]; then
+        echo -e "${RED}❌ Could not detect model endpoint!${NC}"
+        echo ""
+        echo "Please set MODEL_ENDPOINT environment variable:"
+        echo "  export MODEL_ENDPOINT=http://your-model-predictor.namespace.svc.cluster.local:8080/v1"
+        echo "  $0 setup"
+        echo ""
+        exit 1
+    fi
+    
     echo -e "${BLUE}Setting up multi-project demo...${NC}"
+    echo -e "   Model endpoint: ${GREEN}$MODEL_ENDPOINT${NC}"
     echo ""
     
-    # Deploy all projects in parallel-ish (apply manifests directly)
-    deploy_to_namespace "$NS_HR" "phase2" "HR Team - Weather + HR tools"
-    deploy_to_namespace "$NS_DEV" "full" "Dev Team - All development tools"
-    deploy_to_namespace "$NS_OPS" "phase1" "Ops Team - Weather only"
+    deploy_team "$NS_HR" "phase2" "HR Team - Weather + HR tools"
+    deploy_team "$NS_DEV" "full" "Dev Team - All development tools"
+    deploy_team "$NS_OPS" "phase1" "Ops Team - Weather only"
+    
+    # Switch back to original namespace
+    oc project "$CURRENT_NS" >/dev/null 2>&1
     
     echo -e "${GREEN}✅ Multi-project demo setup complete!${NC}"
     echo ""
@@ -72,7 +151,7 @@ setup_projects() {
     echo ""
 }
 
-show_project_status() {
+show_team_status() {
     local ns=$1
     local desc=$2
     
@@ -84,32 +163,14 @@ show_project_status() {
         return
     fi
     
-    # Check LlamaStack pod
-    LS_POD=$(oc get pods -n "$ns" -l app=lsd-genai-playground -o name 2>/dev/null | head -1)
-    if [ -n "$LS_POD" ]; then
-        LS_STATUS=$(oc get "$LS_POD" -n "$ns" -o jsonpath='{.status.phase}' 2>/dev/null)
-        echo -e "   LlamaStack: ${GREEN}$LS_STATUS${NC}"
-    else
-        echo -e "   LlamaStack: ${RED}Not running${NC}"
-    fi
-    
     # Count MCP servers from config
     MCP_COUNT=$(oc get configmap llama-stack-config -n "$ns" -o jsonpath='{.data.run\.yaml}' 2>/dev/null | grep -c "toolgroup_id: mcp::" || echo "0")
     echo -e "   MCP Servers: ${GREEN}$MCP_COUNT${NC}"
     
-    # Get tools count if running
-    if [ -n "$LS_POD" ] && [ "$LS_STATUS" = "Running" ]; then
-        TOOLS=$(oc exec "$LS_POD" -n "$ns" -- curl -s http://localhost:8321/v1/tools 2>/dev/null | python3 -c "
-import sys,json
-try:
-    data=json.load(sys.stdin)
-    tools = [t['name'] for t in data.get('data',[]) if 'mcp::' in t.get('toolgroup_id','')]
-    print(f'{len(tools)} tools: {', '.join(tools[:5])}{'...' if len(tools)>5 else ''}')
-except:
-    print('?')
-" 2>/dev/null || echo "?")
-        echo -e "   Tools: ${GREEN}$TOOLS${NC}"
-    fi
+    # Check pods
+    PODS=$(oc get pods -n "$ns" --no-headers 2>/dev/null | wc -l | tr -d ' ')
+    RUNNING=$(oc get pods -n "$ns" --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+    echo -e "   Pods: ${GREEN}$RUNNING/$PODS running${NC}"
     
     # Get frontend URL
     ROUTE=$(oc get route llamastack-multi-mcp-demo -n "$ns" -o jsonpath='{.spec.host}' 2>/dev/null)
@@ -120,75 +181,29 @@ except:
 show_status() {
     print_header
     
-    echo -e "${BLUE}📊 Project Status${NC}"
+    echo -e "${BLUE}📊 Team Status${NC}"
     echo ""
     
-    show_project_status "$NS_HR" "HR Team - Weather + HR tools"
-    show_project_status "$NS_DEV" "Dev Team - All development tools"
-    show_project_status "$NS_OPS" "Ops Team - Weather only"
+    show_team_status "$NS_OPS" "Ops Team - Weather only"
+    show_team_status "$NS_HR" "HR Team - Weather + HR tools"
+    show_team_status "$NS_DEV" "Dev Team - All development tools"
     
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     echo -e "${BLUE}💡 Demo Commands:${NC}"
-    echo "  oc project $NS_HR && ./scripts/deploy.sh tools"
-    echo "  oc project $NS_DEV && ./scripts/deploy.sh tools"
-    echo "  oc project $NS_OPS && ./scripts/deploy.sh tools"
+    echo "   oc project $NS_OPS && ./scripts/deploy.sh tools   # 3 tools"
+    echo "   oc project $NS_HR && ./scripts/deploy.sh tools    # 10 tools"
+    echo "   oc project $NS_DEV && ./scripts/deploy.sh tools   # 20+ tools"
     echo ""
 }
 
-compare_project() {
-    local ns=$1
-    local desc=$2
-    
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BLUE}📁 $ns${NC} - $desc"
-    
-    if ! oc get namespace "$ns" &>/dev/null; then
-        echo -e "   ${YELLOW}⚠ Not deployed${NC}"
-        return
-    fi
-    
-    echo -e "   ${CYAN}MCP Toolgroups:${NC}"
-    oc get configmap llama-stack-config -n "$ns" -o jsonpath='{.data.run\.yaml}' 2>/dev/null | \
-        grep "toolgroup_id: mcp::" | sed 's/^/   /' || echo "   None"
-    
-    echo -e "   ${CYAN}Tools:${NC}"
-    oc exec deployment/lsd-genai-playground -n "$ns" -- curl -s http://localhost:8321/v1/tools 2>/dev/null | \
-        python3 -c "
-import sys,json
-try:
-    data=json.load(sys.stdin)
-    groups = {}
-    for t in data.get('data', []):
-        g = t.get('toolgroup_id', '')
-        if 'mcp::' in g:
-            groups.setdefault(g, []).append(t['name'])
-    for g, tools in sorted(groups.items()):
-        print(f'   {g}: {', '.join(tools)}')
-except:
-    print('   (not running)')
-" 2>/dev/null || echo "   (not running)"
-    echo ""
-}
-
-compare_projects() {
-    print_header
-    
-    echo -e "${BLUE}🔍 Comparing Project Configurations${NC}"
-    echo ""
-    
-    compare_project "$NS_HR" "HR Team"
-    compare_project "$NS_DEV" "Dev Team"
-    compare_project "$NS_OPS" "Ops Team"
-}
-
-cleanup_projects() {
+cleanup_all() {
     print_header
     
     echo -e "${YELLOW}⚠ This will delete:${NC}"
-    echo "  - $NS_HR"
-    echo "  - $NS_DEV"
-    echo "  - $NS_OPS"
+    echo "   - $NS_HR"
+    echo "   - $NS_DEV"
+    echo "   - $NS_OPS"
     echo ""
     
     read -p "Are you sure? (y/N) " -n 1 -r
@@ -203,34 +218,89 @@ cleanup_projects() {
     fi
 }
 
+switch_config() {
+    local team=$1
+    local phase=$2
+    local desc=$3
+    
+    print_header
+    
+    echo -e "${BLUE}▶ Switching to ${GREEN}$team${BLUE} configuration...${NC}"
+    echo -e "   $desc"
+    echo ""
+    
+    local config_file="$MANIFEST_DIR/llamastack/llama-stack-config-$phase.yaml"
+    
+    if [ ! -f "$config_file" ]; then
+        echo -e "${RED}❌ Config file not found: $config_file${NC}"
+        exit 1
+    fi
+    
+    sed "s/my-first-model/$CURRENT_NS/g" "$config_file" > /tmp/llama-config.yaml
+    oc create configmap llama-stack-config --from-file=run.yaml=/tmp/llama-config.yaml -n "$CURRENT_NS" --dry-run=client -o yaml | oc apply -f -
+    rm /tmp/llama-config.yaml
+    
+    echo -e "   Restarting LlamaStack..."
+    oc delete pod -l app=lsd-genai-playground -n "$CURRENT_NS" 2>/dev/null || true
+    
+    echo ""
+    echo -e "${GREEN}✅ Switched to $team configuration!${NC}"
+    echo -e "${YELLOW}⏳ Wait ~30s then run: ./scripts/deploy.sh tools${NC}"
+    echo ""
+}
+
 # Main
-case "${1:-setup}" in
+case "${1:-help}" in
     setup)
-        setup_projects
+        setup_all
         ;;
     status)
         show_status
         ;;
-    compare)
-        compare_projects
-        ;;
     cleanup)
-        cleanup_projects
+        cleanup_all
+        ;;
+    hr)
+        switch_config "HR Team" "phase2" "Weather + HR tools"
+        ;;
+    dev)
+        switch_config "Dev Team" "full" "All 4 MCP servers"
+        ;;
+    ops)
+        switch_config "Ops Team" "phase1" "Weather only"
         ;;
     help|--help|-h)
         print_header
         echo "Usage: $0 [command]"
         echo ""
-        echo "Commands:"
-        echo "  setup     Create and configure all demo projects (default)"
-        echo "  status    Show status of all demo projects"
-        echo "  compare   Compare MCP configurations across projects"
-        echo "  cleanup   Delete all demo projects"
+        echo -e "${CYAN}Multi-Namespace Setup:${NC}"
+        echo "  setup     Create team namespaces ($NS_HR, $NS_DEV, $NS_OPS)"
+        echo "  status    Show status of all team namespaces"
+        echo "  cleanup   Delete all team namespaces"
         echo ""
-        echo "Hardcoded namespaces:"
-        echo "  - $NS_HR (phase2): HR Team - Weather + HR tools"
-        echo "  - $NS_DEV (full): Dev Team - All development tools"
-        echo "  - $NS_OPS (phase1): Ops Team - Weather only"
+        echo -e "${CYAN}Config Switching (current namespace):${NC}"
+        echo "  ops       Switch to Ops config (Weather only)"
+        echo "  hr        Switch to HR config (Weather + HR)"
+        echo "  dev       Switch to Dev config (All 4 MCPs)"
+        echo ""
+        echo -e "${CYAN}Model Endpoint:${NC}"
+        if [ -n "$MODEL_ENDPOINT" ]; then
+            echo "  Auto-detected: $MODEL_ENDPOINT"
+        else
+            echo "  Not detected - set MODEL_ENDPOINT env var"
+        fi
+        echo ""
+        echo -e "${CYAN}Demo Flow (Multi-Namespace):${NC}"
+        echo "  1. $0 setup                              # Create all teams"
+        echo "  2. $0 status                             # Check status"
+        echo "  3. oc project team-ops && ./scripts/deploy.sh tools  # 3 tools"
+        echo "  4. oc project team-hr && ./scripts/deploy.sh tools   # 10 tools"
+        echo "  5. oc project team-dev && ./scripts/deploy.sh tools  # 20+ tools"
+        echo ""
+        echo -e "${CYAN}Demo Flow (Config Switching):${NC}"
+        echo "  1. $0 ops && sleep 30 && ./scripts/deploy.sh tools   # 3 tools"
+        echo "  2. $0 hr && sleep 30 && ./scripts/deploy.sh tools    # 10 tools"
+        echo "  3. $0 dev && sleep 30 && ./scripts/deploy.sh tools   # 20+ tools"
         echo ""
         ;;
     *)

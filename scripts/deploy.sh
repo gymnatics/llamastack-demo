@@ -1,17 +1,19 @@
 #!/bin/bash
 # LlamaStack MCP Demo - Deployment Script
 #
-# Auto-detects your current namespace and deploys there.
+# Auto-detects your current namespace and model endpoint.
 # No configuration needed - just run it!
 #
 # Usage:
-#   ./deploy.sh              # Deploy Weather MCP (Phase 1)
+#   ./deploy.sh              # Show help
+#   ./deploy.sh phase1       # Deploy Weather MCP only
 #   ./deploy.sh phase2       # Deploy Weather + HR MCPs
 #   ./deploy.sh full         # Deploy all 4 MCP servers
 #   ./deploy.sh status       # Check deployment status
 #   ./deploy.sh tools        # List available tools
-#   ./deploy.sh add-hr       # Add HR MCP to existing setup
+#   ./deploy.sh add <mcp>    # Add specific MCP server
 #   ./deploy.sh reset        # Reset to Weather only
+#   ./deploy.sh multi setup  # Setup multi-project demo
 
 set -e
 
@@ -35,6 +37,38 @@ fi
 # Get current namespace (auto-detect)
 NS=$(oc project -q)
 SOURCE_NS="my-first-model"
+
+# Auto-detect model endpoint
+detect_model_endpoint() {
+    # Try current namespace first
+    local endpoint=$(oc get configmap llama-stack-config -n "$NS" -o jsonpath='{.data.run\.yaml}' 2>/dev/null | \
+        grep -A5 "provider_type: remote::vllm" | grep "url:" | head -1 | sed 's/.*url: //' | tr -d ' ')
+    
+    if [ -n "$endpoint" ]; then
+        echo "$endpoint"
+        return
+    fi
+    
+    # Try source namespace
+    endpoint=$(oc get configmap llama-stack-config -n "$SOURCE_NS" -o jsonpath='{.data.run\.yaml}' 2>/dev/null | \
+        grep -A5 "provider_type: remote::vllm" | grep "url:" | head -1 | sed 's/.*url: //' | tr -d ' ')
+    
+    if [ -n "$endpoint" ]; then
+        echo "$endpoint"
+        return
+    fi
+    
+    # Try to find InferenceService in current namespace
+    local isvc=$(oc get inferenceservice -n "$NS" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [ -n "$isvc" ]; then
+        echo "http://${isvc}-predictor.${NS}.svc.cluster.local:8080/v1"
+        return
+    fi
+    
+    echo ""
+}
+
+MODEL_ENDPOINT="${MODEL_ENDPOINT:-$(detect_model_endpoint)}"
 
 # Header
 echo ""
@@ -182,6 +216,12 @@ except:
         echo -e "   Wait ~30s then run: $0 tools"
         ;;
     
+    multi)
+        # Delegate to multi-project script (team config switching)
+        shift
+        exec "$SCRIPT_DIR/setup-multi-project.sh" "$@"
+        ;;
+    
     help|--help|-h|"")
         echo "Usage: ./deploy.sh [command]"
         echo ""
@@ -197,18 +237,29 @@ except:
         echo "  add github    Add GitHub MCP (all MCPs)"
         echo "  add all       Add all 4 MCP servers"
         echo ""
+        echo -e "${CYAN}Multi-Project Demo:${NC}"
+        echo "  multi setup    Create team namespaces (team-hr, team-dev, team-ops)"
+        echo "  multi status   Show status of all teams"
+        echo "  multi cleanup  Delete team namespaces"
+        echo ""
         echo -e "${CYAN}Other Commands:${NC}"
         echo "  reset     Reset to Weather MCP only"
         echo "  status    Show pods and routes"
         echo "  tools     List available tools"
         echo "  config    Show current MCP configuration"
         echo ""
+        echo -e "${CYAN}Model Endpoint (auto-detected):${NC}"
+        if [ -n "$MODEL_ENDPOINT" ]; then
+            echo "  $MODEL_ENDPOINT"
+        else
+            echo "  (not detected)"
+        fi
+        echo ""
         echo -e "${CYAN}Examples:${NC}"
-        echo "  ./deploy.sh phase1      # Start with Weather only"
-        echo "  ./deploy.sh add hr      # Add HR MCP"
-        echo "  ./deploy.sh add jira    # Add Jira MCP"
-        echo "  ./deploy.sh tools       # See available tools"
-        echo "  ./deploy.sh reset       # Go back to Weather only"
+        echo "  ./deploy.sh phase1        # Start with Weather only"
+        echo "  ./deploy.sh add hr        # Add HR MCP"
+        echo "  ./deploy.sh tools         # See available tools"
+        echo "  ./deploy.sh multi setup   # Create multi-project demo"
         echo ""
         ;;
     
