@@ -22,7 +22,29 @@ data:
 
     # Configuration from environment or defaults
     LLAMASTACK_URL = os.getenv("LLAMASTACK_URL", "http://localhost:8321")
-    MODEL_ID = os.getenv("MODEL_ID", "llama-32-3b-instruct")
+    MODEL_ID = os.getenv("MODEL_ID", "")  # Will be auto-detected if empty
+
+    def get_available_models() -> List[Dict]:
+        """Fetch available models from LlamaStack."""
+        try:
+            response = requests.get(f"{LLAMASTACK_URL}/v1/models", timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                return [m for m in data.get("data", []) if m.get("model_type") == "llm"]
+        except:
+            pass
+        return []
+
+    def get_default_model_id() -> str:
+        """Get the default model ID - either from env or auto-detect."""
+        global MODEL_ID
+        if MODEL_ID:
+            return MODEL_ID
+        models = get_available_models()
+        if models:
+            MODEL_ID = models[0].get("identifier", "")
+            return MODEL_ID
+        return "llama-32-3b-instruct"
 
     # Default MCP Servers (can be overridden via environment)
     DEFAULT_MCP_SERVERS = json.loads(os.getenv("MCP_SERVERS", json.dumps([

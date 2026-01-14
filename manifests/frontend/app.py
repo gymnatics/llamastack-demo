@@ -11,7 +11,35 @@ from typing import List, Dict, Any, Optional
 
 # Configuration from environment or defaults
 LLAMASTACK_URL = os.getenv("LLAMASTACK_URL", "http://localhost:8321")
-MODEL_ID = os.getenv("MODEL_ID", "llama-32-3b-instruct")
+MODEL_ID = os.getenv("MODEL_ID", "")  # Will be auto-detected if empty
+
+def get_available_models() -> List[Dict]:
+    """Fetch available models from LlamaStack."""
+    try:
+        response = requests.get(f"{LLAMASTACK_URL}/v1/models", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            # Filter to only LLM models (not embeddings)
+            return [m for m in data.get("data", []) if m.get("model_type") == "llm"]
+    except:
+        pass
+    return []
+
+def get_default_model_id() -> str:
+    """Get the default model ID - either from env or auto-detect."""
+    global MODEL_ID
+    if MODEL_ID:
+        return MODEL_ID
+    
+    # Auto-detect from LlamaStack
+    models = get_available_models()
+    if models:
+        # Prefer the first LLM model
+        MODEL_ID = models[0].get("identifier", "")
+        return MODEL_ID
+    
+    # Fallback
+    return "llama-32-3b-instruct"
 
 # Default MCP Servers (can be overridden via environment)
 # NOTE: Weather MCP is colleague's OpenWeatherMap version on port 80 (service port)
@@ -394,7 +422,7 @@ def get_available_tools() -> List[Dict]:
 def chat_completion_openai(messages: List[Dict], tools: List[Dict] = None) -> Dict:
     """Send chat completion request using OpenAI-compatible endpoint."""
     payload = {
-        "model": MODEL_ID,
+        "model": get_default_model_id(),
         "messages": messages,
         "temperature": 0.7,
         "max_tokens": 4096,
@@ -508,16 +536,35 @@ with st.sidebar:
     
     # Connection settings
     with st.expander("🌐 LlamaStack Endpoint", expanded=False):
+        global LLAMASTACK_URL, MODEL_ID
+        
         new_llamastack_url = st.text_input(
             "LlamaStack URL",
             value=LLAMASTACK_URL,
             help="LlamaStack service endpoint"
         )
-        new_model_id = st.text_input(
-            "Model ID", 
-            value=MODEL_ID,
-            help="Model identifier in LlamaStack"
-        )
+        
+        # Auto-detect available models
+        available_models = get_available_models()
+        model_options = [m.get("identifier", "") for m in available_models] if available_models else []
+        current_model = get_default_model_id()
+        
+        if model_options:
+            # Show dropdown with available models
+            default_idx = model_options.index(current_model) if current_model in model_options else 0
+            new_model_id = st.selectbox(
+                "Model",
+                options=model_options,
+                index=default_idx,
+                help="Auto-detected from LlamaStack"
+            )
+        else:
+            # Fallback to text input if can't fetch models
+            new_model_id = st.text_input(
+                "Model ID", 
+                value=current_model,
+                help="Model identifier in LlamaStack"
+            )
         
         if new_llamastack_url != LLAMASTACK_URL:
             LLAMASTACK_URL = new_llamastack_url
@@ -847,9 +894,10 @@ if prompt := st.chat_input("Ask a question... (e.g., 'What's the weather at VIDP
 # Footer
 st.markdown("---")
 enabled_servers = [s["name"] for s in st.session_state.mcp_servers if s["enabled"]]
+current_model_display = get_default_model_id() or "Not detected"
 st.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.8rem;">
-    <p>🦙 LlamaStack Multi-MCP Demo | Model: {MODEL_ID}</p>
+    <p>🦙 LlamaStack Multi-MCP Demo | Model: {current_model_display}</p>
     <p>Active MCP Servers: {', '.join(enabled_servers) if enabled_servers else 'None'}</p>
 </div>
 """, unsafe_allow_html=True)
