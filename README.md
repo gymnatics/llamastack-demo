@@ -9,10 +9,11 @@ A comprehensive demonstration of LlamaStack with multiple Model Context Protocol
 ## 🎯 What This Demo Shows
 
 1. **Multiple MCP Servers** - Weather, HR, Jira/Confluence, GitHub integrations
-2. **Phase-based Deployment** - Start simple, add complexity progressively
-3. **YAML-based Management** - Admin-controlled MCP server configuration
-4. **User Tool Selection** - Users choose which tools to use
-5. **Enterprise Patterns** - Separation of admin vs user capabilities
+2. **Multi-Project Architecture** - Different teams get different LlamaStack distributions ⭐
+3. **Phase-based Deployment** - Start simple, add complexity progressively
+4. **YAML-based Management** - Admin-controlled MCP server configuration
+5. **User Tool Selection** - Users choose which tools to use
+6. **Enterprise Patterns** - Separation of admin vs user capabilities
 
 ---
 
@@ -90,6 +91,37 @@ llamastack-demo/
 │   └── deploy.sh               # Main deployment script
 └── README.md
 ```
+
+---
+
+## 🏢 Multi-Project Demo (Key Feature)
+
+Show how different teams get different LlamaStack distributions with different MCP servers:
+
+```bash
+# Setup multi-project demo (creates 3 namespaces)
+./scripts/setup-multi-project.sh
+
+# This creates:
+#   team-hr      → Weather + HR tools
+#   team-dev     → All development tools (Weather, Jira, GitHub)
+#   team-ops     → Weather only (minimal)
+
+# Compare tools across projects
+./scripts/setup-multi-project.sh compare
+
+# Show status of all projects
+./scripts/setup-multi-project.sh status
+
+# Cleanup when done
+./scripts/setup-multi-project.sh cleanup
+```
+
+**Demo talking points:**
+- Each project has its own LlamaStack distribution
+- Admins configure which MCP servers each team gets via YAML
+- Teams can only access tools assigned to their project
+- Easy to add new teams with different tool configurations
 
 ---
 

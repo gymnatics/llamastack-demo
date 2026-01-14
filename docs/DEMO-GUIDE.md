@@ -7,13 +7,14 @@ This guide shows how to demonstrate adding and removing MCP servers from a Llama
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Demo Flow](#demo-flow)
-3. [Demo Scenarios](#demo-scenarios)
-4. [Manual Steps (For Demo)](#manual-steps-for-demo)
-5. [Available MCP Servers](#available-mcp-servers)
-6. [Frontend UI](#frontend-ui)
-7. [YAML Reference](#yaml-reference)
-8. [Troubleshooting](#troubleshooting)
+2. [Multi-Project Demo](#multi-project-demo) ⭐ **Key Demo Feature**
+3. [Demo Flow](#demo-flow)
+4. [Demo Scenarios](#demo-scenarios)
+5. [Manual Steps (For Demo)](#manual-steps-for-demo)
+6. [Available MCP Servers](#available-mcp-servers)
+7. [Frontend UI](#frontend-ui)
+8. [YAML Reference](#yaml-reference)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -51,6 +52,168 @@ oc project my-demo-namespace
 | `./scripts/deploy.sh status` | Show pods and routes |
 | `./scripts/deploy.sh tools` | List available tools |
 | `./scripts/deploy.sh config` | Show current MCP config |
+
+---
+
+## Multi-Project Demo
+
+> ⭐ **Key Demo Feature**: Show how different projects/teams have different LlamaStack distributions with different MCP servers attached.
+
+### Concept
+
+In an enterprise, different teams need different tools:
+- **HR Team** → Weather + HR tools
+- **Dev Team** → Weather + Jira + GitHub tools  
+- **Full Platform** → All tools available
+
+Each team gets their own **namespace** with their own **LlamaStack distribution** configured with only the MCP servers they need.
+
+### Setup Multi-Project Demo
+
+```bash
+# Create 3 project namespaces
+oc new-project team-hr
+oc new-project team-dev
+oc new-project team-platform
+
+# Deploy HR Team's LlamaStack (Weather + HR)
+oc project team-hr
+./scripts/deploy.sh phase2
+
+# Deploy Dev Team's LlamaStack (Weather + Jira + GitHub)
+oc project team-dev
+./scripts/deploy.sh full
+
+# Deploy Platform Team's LlamaStack (All tools)
+oc project team-platform
+./scripts/deploy.sh full
+```
+
+### Demo Walkthrough
+
+#### Step 1: Show HR Team's Tools
+
+```bash
+oc project team-hr
+./scripts/deploy.sh tools
+```
+
+**Expected output:**
+```
+Total: 10 tools
+
+mcp::weather-data:
+  - getforecast
+
+mcp::hr-tools:
+  - get_vacation_balance
+  - get_employee_info
+  - list_employees
+  - list_job_openings
+  - create_vacation_request
+  - get_performance_review
+```
+
+**Demo point:** "HR team only has access to Weather and HR tools - no GitHub or Jira access."
+
+#### Step 2: Show Dev Team's Tools
+
+```bash
+oc project team-dev
+./scripts/deploy.sh tools
+```
+
+**Expected output:**
+```
+Total: 20+ tools
+
+mcp::weather-data:
+  - getforecast
+
+mcp::jira-confluence:
+  - search_issues
+  - get_issue_details
+  - create_issue
+  - search_confluence
+  - list_projects
+
+mcp::github-tools:
+  - search_repositories
+  - get_repository
+  - list_issues
+  - search_code
+  - get_user
+```
+
+**Demo point:** "Dev team has Weather, Jira, and GitHub - the tools they need for development workflows."
+
+#### Step 3: Compare Configurations
+
+```bash
+# Show HR team's config
+echo "=== HR Team LlamaStack Config ==="
+oc project team-hr
+oc get configmap llama-stack-config -o jsonpath='{.data.run\.yaml}' | grep -A4 "toolgroup_id: mcp::"
+
+echo ""
+echo "=== Dev Team LlamaStack Config ==="
+oc project team-dev
+oc get configmap llama-stack-config -o jsonpath='{.data.run\.yaml}' | grep -A4 "toolgroup_id: mcp::"
+```
+
+**Demo point:** "Each project has its own LlamaStack ConfigMap with different MCP servers configured."
+
+#### Step 4: Show Different Frontend URLs
+
+```bash
+echo "=== Project Frontend URLs ==="
+echo ""
+echo "HR Team:"
+oc get route llamastack-multi-mcp-demo -n team-hr -o jsonpath='{.spec.host}' 2>/dev/null && echo ""
+echo ""
+echo "Dev Team:"
+oc get route llamastack-multi-mcp-demo -n team-dev -o jsonpath='{.spec.host}' 2>/dev/null && echo ""
+echo ""
+echo "Platform Team:"
+oc get route llamastack-multi-mcp-demo -n team-platform -o jsonpath='{.spec.host}' 2>/dev/null && echo ""
+```
+
+**Demo point:** "Each team has their own frontend URL. When they open it, they only see the tools available to their team."
+
+### Key Talking Points
+
+1. **Isolation**: Each project has its own LlamaStack distribution
+2. **Customization**: Admins configure which MCP servers each team gets
+3. **Security**: Teams can't access tools they shouldn't have
+4. **Scalability**: Easy to add new teams with different tool sets
+5. **YAML-based**: All configuration is declarative and version-controlled
+
+### Quick Multi-Project Setup Script
+
+```bash
+#!/bin/bash
+# setup-multi-project-demo.sh
+
+# HR Team - Weather + HR
+oc new-project team-hr 2>/dev/null || oc project team-hr
+./scripts/deploy.sh phase2
+
+# Dev Team - All tools
+oc new-project team-dev 2>/dev/null || oc project team-dev
+./scripts/deploy.sh full
+
+# Show results
+echo ""
+echo "=== Multi-Project Demo Ready ==="
+echo ""
+echo "HR Team (team-hr):"
+./scripts/deploy.sh tools 2>/dev/null | head -15
+
+echo ""
+echo "Dev Team (team-dev):"
+oc project team-dev >/dev/null
+./scripts/deploy.sh tools 2>/dev/null | head -20
+```
 
 ---
 
