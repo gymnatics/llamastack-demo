@@ -269,12 +269,12 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${YELLOW}📝 Getting current LlamaStack config...${NC}"
 oc get configmap llama-stack-config -n $NAMESPACE -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
 
-echo -e "${YELLOW}📝 Patching config to add Weather MCP...${NC}"
-cat /tmp/current-config.yaml | sed 's/tool_groups:/tool_groups:\
-- toolgroup_id: mcp::weather-data\
-  provider_id: model-context-protocol\
-  mcp_endpoint:\
-    uri: http:\/\/weather-mongodb-mcp:8000\/mcp/' > /tmp/patched-config.yaml
+echo -e "${YELLOW}📝 Patching config to add Weather MCP (using shared server in $NAMESPACE)...${NC}"
+cat /tmp/current-config.yaml | sed "s/tool_groups:/tool_groups:\\
+- toolgroup_id: mcp::weather-data\\
+  provider_id: model-context-protocol\\
+  mcp_endpoint:\\
+    uri: http:\\/\\/weather-mongodb-mcp.$NAMESPACE.svc.cluster.local:8000\\/mcp/" > /tmp/patched-config.yaml
 
 echo -e "${YELLOW}📝 Applying patched config...${NC}"
 oc create configmap llama-stack-config \
@@ -336,12 +336,12 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${YELLOW}📝 Getting current LlamaStack config...${NC}"
 oc get configmap llama-stack-config -n $NAMESPACE -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
 
-echo -e "${YELLOW}📝 Patching config to add HR MCP...${NC}"
-cat /tmp/current-config.yaml | sed 's/- toolgroup_id: builtin::rag/- toolgroup_id: mcp::hr-tools\
-  provider_id: model-context-protocol\
-  mcp_endpoint:\
-    uri: http:\/\/hr-mcp-server:8000\/mcp\
-- toolgroup_id: builtin::rag/' > /tmp/patched-config.yaml
+echo -e "${YELLOW}📝 Patching config to add HR MCP (using shared server in $NAMESPACE)...${NC}"
+cat /tmp/current-config.yaml | sed "s/- toolgroup_id: builtin::rag/- toolgroup_id: mcp::hr-tools\\
+  provider_id: model-context-protocol\\
+  mcp_endpoint:\\
+    uri: http:\\/\\/hr-mcp-server.$NAMESPACE.svc.cluster.local:8000\\/mcp\\
+- toolgroup_id: builtin::rag/" > /tmp/patched-config.yaml
 
 echo -e "${YELLOW}📝 Applying patched config...${NC}"
 oc create configmap llama-stack-config \

@@ -232,9 +232,11 @@ The model needs a few minutes to download and start up.
 
 ---
 
-# Part 2: Add AI Tools & Test the Playground (30 min)
+# Part 2: Enable AI Playground & Add Weather Tool (30 min)
 
-Now we'll add "tools" that give your AI special abilities, like checking the weather!
+Now we'll enable the AI Playground and connect a weather tool to give your AI special abilities!
+
+> 📝 **Note:** The MCP servers (Weather and HR) are already deployed and shared by your instructor. You just need to connect them to your AI!
 
 ## Step 2.1: Open the Web Terminal
 
@@ -249,9 +251,7 @@ We need to run some commands. OpenShift has a built-in terminal in your browser!
 
 > ❓ **Don't see the terminal icon?** Ask your instructor for help.
 
-## Step 2.2: Download the Workshop Files
-
-First, let's download the files we need for deploying the MCP tools.
+## Step 2.2: Set Up Your Environment
 
 **Step 1: Set your namespace variable** (replace XX with your number):
 
@@ -264,7 +264,7 @@ For example, if you're user 5:
 export NS=user-05
 ```
 
-**Step 2: Download the workshop files:**
+**Step 2: Download the workshop files (for notebooks later):**
 
 ```bash
 git clone https://github.com/gymnatics/llamastack-demo.git
@@ -283,117 +283,25 @@ Switched to branch 'workshop-branch'
 
 ---
 
-## Step 2.3: Deploy the Weather Tool
-
-Let's give your AI the ability to check the weather!
-
-**Copy and paste this command into the Web Terminal:**
-
-```bash
-oc apply -f manifests/mcp-servers/weather-mongodb/deploy-weather-mongodb.yaml -n $NS
-```
-
-Press `Enter`. You'll see several lines saying things were "created".
-
----
-
-## Step 2.4: Deploy the HR Tool
-
-Let's also deploy an HR (Human Resources) tool. We'll use it later!
-
-**Copy and paste this command into the Web Terminal:**
-
-```bash
-oc apply -f manifests/workshop/deploy-hr-mcp-simple.yaml -n $NS
-```
-
-Press `Enter`.
-
----
-
-## Step 2.5: Wait for the Tools to Start
-
-The tools need a minute to start up. Let's wait for them.
-
-**Copy and paste these commands one at a time:**
-
-```bash
-echo "⏳ Waiting for Weather tool..."
-oc wait --for=condition=available deployment/mongodb -n $NS --timeout=120s
-oc wait --for=condition=complete job/init-weather-data -n $NS --timeout=120s
-oc wait --for=condition=available deployment/weather-mongodb-mcp -n $NS --timeout=180s
-echo "✅ Weather tool ready!"
-```
-
-```bash
-echo "⏳ Waiting for HR tool..."
-oc wait --for=condition=available deployment/hr-mcp-server -n $NS --timeout=180s
-echo "✅ HR tool ready!"
-```
-
-When you see `✅ Weather tool ready!` and `✅ HR tool ready!`, you're good to go!
-
----
-
-## Step 2.6: See Your Tools in the Dashboard
-
-Let's see what we just deployed in the OpenShift AI Dashboard!
-
-1. **Go to** your project in the OpenShift AI Dashboard
-2. **Click** on **"Workloads"** → **"Pods"** in the OpenShift Console (not the AI Dashboard)
-   - Or run `oc get pods -n $NS` in your terminal
-
-You should see several pods running:
-- `mongodb-xxxxx` - Database for weather data
-- `weather-mongodb-mcp-xxxxx` - Weather MCP server
-- `hr-mcp-server-xxxxx` - HR MCP server
-- `llama-32-3b-instruct-predictor-xxxxx` - Your AI model
-
-
----
-
-## Step 2.7: Register MCP Servers (Admin Step)
-
-Before we can use MCP servers, they need to be registered in OpenShift AI. This is done by applying a ConfigMap to the `redhat-ods-applications` namespace.
-
-> 📝 **Note:** Your instructor may have already done this step for the whole cluster. Check with them first!
-
-**If MCP servers are NOT already registered, run this command:**
-
-```bash
-# Register MCP servers in AI Asset Endpoints (cluster-wide)
-oc apply -f manifests/workshop/gen-ai-aa-mcp-servers-workshop.yaml
-```
-
-**To verify MCP servers are registered:**
-
-1. **Go to** the OpenShift AI Dashboard
-2. **Click** on **"Settings"** in the left menu
-3. **Click** on **"AI asset endpoints"**
-4. You should see **Weather-MCP-Server** and **HR-MCP-Server** in the list
-
-
----
-
-## Step 2.8: Enable the AI Playground
+## Step 2.3: Enable the AI Playground
 
 The "Playground" is a chat interface where you can talk to your AI. When you enable it, a LlamaStack Distribution is created with your model.
 
 1. **Go to** your project in the OpenShift AI Dashboard
-2. **Click** on **"AI Asset Endpoints"** (in your project, not Settings)
+2. **Click** on **"AI Asset Endpoints"** (in your project)
 3. **Find** your model `llama-32-3b-instruct` in the list
 4. **Click** the **"Add to Playground"** button next to it
 5. **Wait** about 2 minutes for the Playground to be created
 
 > 💡 You might see a loading indicator. Just wait for it to finish.
 
-
-
 ---
 
-## Step 2.8.5: Add Weather MCP to LlamaStack Config
+## Step 2.4: Add Weather MCP to LlamaStack Config
 
-Now we need to add the Weather MCP server to the LlamaStack configuration. The Playground created a ConfigMap called `llama-stack-config` - we'll patch it to add the MCP.
+Now we need to connect the Weather MCP server to your AI. The Playground created a ConfigMap called `llama-stack-config` - we'll patch it to add the MCP.
+
+> 📝 **Note:** The Weather MCP server is shared and running in the `admin-workshop` namespace. We just need to tell your AI where to find it!
 
 **Go back to your terminal and run these commands:**
 
@@ -409,12 +317,12 @@ grep -A5 "tool_groups:" /tmp/current-config.yaml
 You should see only `builtin::rag`. Now let's add the Weather MCP:
 
 ```bash
-# Step 3: Add Weather MCP to the config
+# Step 3: Add Weather MCP to the config (using shared server in admin-workshop)
 cat /tmp/current-config.yaml | sed 's/tool_groups:/tool_groups:\
 - toolgroup_id: mcp::weather-data\
   provider_id: model-context-protocol\
   mcp_endpoint:\
-    uri: http:\/\/weather-mongodb-mcp:8000\/mcp/' > /tmp/patched-config.yaml
+    uri: http:\/\/weather-mongodb-mcp.admin-workshop.svc.cluster.local:8000\/mcp/' > /tmp/patched-config.yaml
 
 # Step 4: Verify the patch looks correct
 echo "Patched tool_groups:"
@@ -437,33 +345,18 @@ oc delete pod -l app=lsd-genai-playground -n $NS
 echo "⏳ Waiting for LlamaStack to restart..."
 sleep 20
 oc wait --for=condition=ready pod -l app=lsd-genai-playground -n $NS --timeout=120s
-echo "✅ LlamaStack restarted!"
+echo "✅ LlamaStack restarted with Weather MCP!"
 ```
 
 > 📝 **What just happened?** 
 > - We exported the current config created by the operator
-> - Added the Weather MCP to the `tool_groups` section
+> - Added the Weather MCP (from the shared `admin-workshop` namespace) to the `tool_groups` section
 > - Replaced the ConfigMap with the patched version
 > - Restarted the pod to load the new config
 
 ---
 
-## Step 2.9: Test Your AI in the Playground!
-
-The "Playground" is a chat interface where you can talk to your AI.
-
-1. Stay on the **"AI Asset Endpoints"** page
-2. **Find** your model `llama-32-3b-instruct` in the list
-3. **Click** the **"Add to Playground"** button next to it
-4. **Wait** about 2 minutes for the Playground to be created
-
-> 💡 You might see a loading indicator. Just wait for it to finish.
-
-
-
----
-
-## Step 2.9: Test Your AI in the Playground!
+## Step 2.5: Test Your AI in the Playground!
 
 Let's chat with your AI!
 
@@ -498,12 +391,9 @@ List all available weather stations
 What's the weather in Tokyo?
 ```
 
-
-
-
 ---
 
-## Step 2.10: Check What Tools Are Available
+## Step 2.6: Check What Tools Are Available
 
 Let's verify what tools your AI can use right now.
 
@@ -523,13 +413,13 @@ for t in mcps:
     print(f\"  • {t.get('name')}\")"
 ```
 
-You should see about **3 tools** (all weather-related).
+You should see about **5 tools** (all weather-related).
 
-> 📝 **Note:** The HR tool is deployed but not connected to your AI yet. We'll do that in Part 3!
+> 📝 **Note:** The HR tool is available but not connected to your AI yet. We'll add it in Part 3!
 
 ---
 
-## Step 2.11: Run the Notebook (First Time)
+## Step 2.7: Run the Notebook (First Time)
 
 A "notebook" is an interactive document where you can run code. Let's try it!
 
@@ -550,8 +440,6 @@ A "notebook" is an interactive document where you can run code. Let's try it!
 6. **Wait** for the status to show **"Running"** (1-2 minutes)
 7. **Click** the **"Open"** link to launch JupyterLab
 
-
-
 ### Get the Workshop Notebook:
 
 8. In JupyterLab, look at the top menu
@@ -565,8 +453,6 @@ A "notebook" is an interactive document where you can run code. Let's try it!
     `llamastack-demo` → `notebooks` → `workshop_client_demo.ipynb`
 13. **Double-click** to open it
 
-
-
 ### Run the Notebook:
 
 14. **Find the cell** that says `PROJECT_NAME = "user-XX"`
@@ -575,9 +461,7 @@ A "notebook" is an interactive document where you can run code. Let's try it!
 
 **Look at the output!** You should see:
 - 1 LLM model available
-- About 3 MCP tools (Weather only)
-
-
+- About 5 MCP tools (Weather only)
 
 ✅ **Success!** You've completed Part 2!
 
@@ -603,7 +487,7 @@ tool_groups:
 - toolgroup_id: mcp::weather-data
   provider_id: model-context-protocol
   mcp_endpoint:
-    uri: http://weather-mongodb-mcp:8000/mcp
+    uri: http://weather-mongodb-mcp.admin-workshop.svc.cluster.local:8000/mcp
 - toolgroup_id: builtin::rag
   provider_id: rag-runtime
 ```
@@ -616,6 +500,8 @@ Notice: Only Weather MCP and builtin RAG are listed - no HR MCP yet!
 
 Now let's add the HR MCP tool to the configuration using the same patching approach.
 
+> 📝 **Note:** The HR MCP server is also shared and running in the `admin-workshop` namespace.
+
 **Copy and paste these commands:**
 
 ```bash
@@ -626,7 +512,7 @@ oc get configmap llama-stack-config -n $NS -o jsonpath='{.data.run\.yaml}' > /tm
 cat /tmp/current-config.yaml | sed 's/- toolgroup_id: builtin::rag/- toolgroup_id: mcp::hr-tools\
   provider_id: model-context-protocol\
   mcp_endpoint:\
-    uri: http:\/\/hr-mcp-server:8000\/mcp\
+    uri: http:\/\/hr-mcp-server.admin-workshop.svc.cluster.local:8000\/mcp\
 - toolgroup_id: builtin::rag/' > /tmp/patched-config.yaml
 
 # Step 3: Verify the patch
@@ -694,7 +580,7 @@ for tg,names in sorted(groups.items()):
         print(f'   • {n}')"
 ```
 
-You should now see **about 8 tools**, including:
+You should now see **about 10 tools**, including:
 - Weather tools (from before)
 - HR tools (NEW!) like `list_employees`, `get_vacation_balance`, etc.
 
@@ -741,7 +627,7 @@ What's the weather in Tokyo, and how many vacation days does Alice Johnson have?
 | Before (Part 2) | After (Part 3) |
 |-----------------|----------------|
 | 1 tool group (Weather) | 2 tool groups (Weather + HR) |
-| ~3 tools | ~8 tools |
+| ~5 tools | ~10 tools |
 | Weather questions only | Weather + HR questions |
 
 **Key takeaway:** You added new capabilities to your AI by just updating a configuration file - no coding required!
@@ -779,10 +665,10 @@ Remember the notebook you ran in Part 2? Let's run it again and see the differen
 ## Step 5.3: Compare the Results!
 
 **Part 2 (first run):**
-- MCP Tools: ~3 (Weather only)
+- MCP Tools: ~5 (Weather only)
 
 **Part 5 (second run):**
-- MCP Tools: ~8 (Weather + HR)
+- MCP Tools: ~10 (Weather + HR)
 
 🎯 **The notebook code didn't change at all!** The same code automatically discovered the new HR tools because you updated the LlamaStack configuration.
 
@@ -808,7 +694,7 @@ You've completed the LlamaStack Workshop!
 
 ✅ Created your own AI project on OpenShift  
 ✅ Deployed a real AI model (Llama 3.2)  
-✅ Added tools (MCP servers) to give your AI special abilities  
+✅ Connected shared MCP tools (Weather, HR) to your AI  
 ✅ Used the Playground to chat with your AI  
 ✅ Updated your AI's configuration to add new tools  
 ✅ Ran notebooks to interact with your AI programmatically  
@@ -898,12 +784,14 @@ oc delete pod -l app=lsd-genai-playground -n $NS
 oc logs deployment/lsd-genai-playground -n $NS --tail=50
 ```
 
-## Important URLs (for MCP registration)
+## Shared MCP Server URLs
+
+These MCP servers are shared and running in the `admin-workshop` namespace:
 
 | Tool | URL |
 |------|-----|
-| Weather | `http://weather-mongodb-mcp:8000/mcp` |
-| HR | `http://hr-mcp-server:8000/mcp` |
+| Weather | `http://weather-mongodb-mcp.admin-workshop.svc.cluster.local:8000/mcp` |
+| HR | `http://hr-mcp-server.admin-workshop.svc.cluster.local:8000/mcp` |
 
 ---
 

@@ -20,9 +20,9 @@
 | Phase | Duration | Who | Description |
 |-------|----------|-----|-------------|
 | **Pre-Setup** | Before | Admin | GPU provisioning, RHOAI + LlamaStack installation |
-| **Part 1** | 45 min | Users | Create project, hardware profile, deploy model |
-| **Part 2** | 30 min | Users | Deploy both MCPs → Enable Playground (Weather only) → Test → Run notebook |
-| **Part 3** | 30 min | Users | Update LlamaStack config to add HR MCP → Test new tools |
+| **Part 1** | 45 min | Users | Create project, deploy model |
+| **Part 2** | 30 min | Users | Enable Playground → Add Weather MCP (shared) → Test → Run notebook |
+| **Part 3** | 30 min | Users | Update LlamaStack config to add HR MCP (shared) → Test new tools |
 | **Part 4** | 30 min | Admin | Azure OpenAI demo via notebook (Playground doesn't support external models) |
 | **Part 5** | 30 min | Users | Run full client notebook with all tools |
 | **Wrap-up** | 15 min | All | Q&A and cleanup |
@@ -252,57 +252,46 @@ oc get pods -n user-XX | grep llama
 
 ---
 
-## 🎮 Part 2: Deploy MCPs & Enable Playground (30 min)
+## 🎮 Part 2: Enable Playground & Add Weather MCP (30 min)
 
-> **Goal:** Deploy both MCP servers, register them as endpoints, enable Playground with Weather only, test, and run notebook
+> **Goal:** Enable Playground, connect to shared Weather MCP, test, and run notebook
 
-### Step 2.1: Deploy Both MCP Servers
+> 📝 **Note:** MCP servers (Weather and HR) are pre-deployed by the admin in the `admin-workshop` namespace and shared by all users. Users just need to configure their LlamaStack to connect to them.
 
-Deploy **both** MCP servers now (but only Weather will be active in LlamaStack initially):
-
-```bash
-# Deploy Weather MCP (MongoDB + MCP Server)
-oc apply -f manifests/mcp-servers/weather-mongodb/deploy-weather-mongodb.yaml -n user-XX
-
-# Deploy HR MCP Server (for Part 3)
-oc apply -f manifests/workshop/deploy-hr-mcp-simple.yaml -n user-XX
-
-# Wait for MongoDB to be ready
-oc wait --for=condition=available deployment/mongodb -n user-XX --timeout=120s
-
-# Wait for data initialization
-oc wait --for=condition=complete job/init-weather-data -n user-XX --timeout=120s
-
-# Wait for both MCP servers to be ready
-oc wait --for=condition=available deployment/weather-mongodb-mcp -n user-XX --timeout=180s
-oc wait --for=condition=available deployment/hr-mcp-server -n user-XX --timeout=180s
-```
-
-### Step 2.2: Register MCP Servers as AI Asset Endpoints
-
-Both MCP servers are now running. Let's register them as AI Asset Endpoints:
-
-1. Go to **AI Asset Endpoints** in your project
-2. Click **Add endpoint** → **MCP Server**
-3. Register Weather MCP:
-   - **Name:** `weather-mcp`
-   - **URL:** `http://weather-mongodb-mcp:8000/mcp`
-4. Register HR MCP:
-   - **Name:** `hr-mcp`
-   - **URL:** `http://hr-mcp-server:8000/mcp`
-
-> **Note:** Both endpoints are registered, but only Weather will be added to LlamaStack's toolgroup initially.
-
-### Step 2.3: Enable Playground
+### Step 2.1: Enable Playground
 
 1. Go to **AI Asset Endpoints** in your project
 2. Find your deployed model `llama-32-3b-instruct`
 3. Click **Add to Playground**
 4. Wait for the LlamaStack Distribution to be created (~2 min)
 
-> **Important:** The default LlamaStack config will only include the Weather MCP in its toolgroup. The HR MCP is deployed and registered but not yet connected to LlamaStack.
+### Step 2.2: Add Weather MCP to LlamaStack Config
 
-### Step 2.4: Access the Playground
+The Playground creates a `llama-stack-config` ConfigMap. We need to patch it to add the shared Weather MCP:
+
+```bash
+# Step 1: Get the current config
+oc get configmap llama-stack-config -n user-XX -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
+
+# Step 2: Add Weather MCP (using shared server in admin-workshop)
+cat /tmp/current-config.yaml | sed 's/tool_groups:/tool_groups:\
+- toolgroup_id: mcp::weather-data\
+  provider_id: model-context-protocol\
+  mcp_endpoint:\
+    uri: http:\/\/weather-mongodb-mcp.admin-workshop.svc.cluster.local:8000\/mcp/' > /tmp/patched-config.yaml
+
+# Step 3: Apply the patched config
+oc create configmap llama-stack-config \
+  --from-file=run.yaml=/tmp/patched-config.yaml \
+  -n user-XX \
+  --dry-run=client -o yaml | oc replace -f -
+
+# Step 4: Restart LlamaStack
+oc delete pod -l app=lsd-genai-playground -n user-XX
+oc wait --for=condition=ready pod -l app=lsd-genai-playground -n user-XX --timeout=120s
+```
+
+### Step 2.3: Access the Playground
 
 1. Navigate to **GenAI Studio** → **Playground**
 2. Select your model from the dropdown
@@ -312,7 +301,7 @@ Both MCP servers are now running. Let's register them as AI Asset Endpoints:
 What is the capital of France? Answer in one sentence.
 ```
 
-### Step 2.5: Test Weather MCP Integration
+### Step 2.4: Test Weather MCP Integration
 
 In the Playground, try:
 
@@ -333,7 +322,7 @@ List all available weather stations
 Compare the weather in Tokyo and London
 ```
 
-### Step 2.6: Check Current Configuration
+### Step 2.5: Check Current Configuration
 
 Let's see what tools are currently available:
 
@@ -356,9 +345,9 @@ MCP Servers in LlamaStack: 1
   - mcp::weather-data
 ```
 
-> **Note:** HR MCP is deployed and registered as an endpoint, but not yet in LlamaStack's toolgroup!
+> **Note:** HR MCP is available in `admin-workshop` but not yet in your LlamaStack's toolgroup!
 
-### Step 2.7: Run the Notebook (First Time)
+### Step 2.6: Run the Notebook (First Time)
 
 Now let's interact with LlamaStack programmatically using a notebook.
 
@@ -390,7 +379,7 @@ Now let's interact with LlamaStack programmatically using a notebook.
 
 This is the key learning: **LlamaStack configurations can be updated without code changes!**
 
-The HR MCP server is already deployed and registered (from Part 2). Now we'll add it to LlamaStack's toolgroup so the AI agent can use it.
+The HR MCP server is running in the shared `admin-workshop` namespace. Now we'll add it to your LlamaStack's toolgroup so your AI agent can use it.
 
 ### Step 3.1: View Current LlamaStack Config
 
@@ -411,36 +400,46 @@ tool_groups:
     uri: http://weather-mongodb-mcp:8000/mcp
 ```
 
-### Step 3.2: Apply Phase 2 Configuration
+### Step 3.2: Add HR MCP to Configuration
 
 Now let's update LlamaStack to include the HR MCP server in the toolgroup:
 
 ```bash
-# Apply the Phase 2 config (adds HR MCP to toolgroup)
-oc apply -f manifests/workshop/llama-stack-config-workshop-phase2.yaml -n user-XX
+# Step 1: Get the current config
+oc get configmap llama-stack-config -n user-XX -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
 
-# Restart LlamaStack to pick up the new config
+# Step 2: Add HR MCP (using shared server in admin-workshop)
+cat /tmp/current-config.yaml | sed 's/- toolgroup_id: builtin::rag/- toolgroup_id: mcp::hr-tools\
+  provider_id: model-context-protocol\
+  mcp_endpoint:\
+    uri: http:\/\/hr-mcp-server.admin-workshop.svc.cluster.local:8000\/mcp\
+- toolgroup_id: builtin::rag/' > /tmp/patched-config.yaml
+
+# Step 3: Apply the patched config
+oc create configmap llama-stack-config \
+  --from-file=run.yaml=/tmp/patched-config.yaml \
+  -n user-XX \
+  --dry-run=client -o yaml | oc replace -f -
+
+# Step 4: Restart LlamaStack
 oc delete pod -l app=lsd-genai-playground -n user-XX
-
-# Wait for restart
-echo "Waiting for LlamaStack to restart..."
-sleep 30
+oc wait --for=condition=ready pod -l app=lsd-genai-playground -n user-XX --timeout=120s
 ```
 
 The new config adds HR MCP to the toolgroup:
 
 ```yaml
 tool_groups:
-- toolgroup_id: builtin::rag
-  provider_id: rag-runtime
 - toolgroup_id: mcp::weather-data      # ← Weather (same as before)
   provider_id: model-context-protocol
   mcp_endpoint:
-    uri: http://weather-mongodb-mcp:8000/mcp
+    uri: http://weather-mongodb-mcp.admin-workshop.svc.cluster.local:8000/mcp
 - toolgroup_id: mcp::hr-tools          # ← HR MCP (NEW!)
   provider_id: model-context-protocol
   mcp_endpoint:
-    uri: http://hr-mcp-server:8000/mcp
+    uri: http://hr-mcp-server.admin-workshop.svc.cluster.local:8000/mcp
+- toolgroup_id: builtin::rag
+  provider_id: rag-runtime
 ```
 
 ### Step 3.3: Verify New Tools Are Available
@@ -464,10 +463,10 @@ for tg,count in sorted(groups.items()):
 
 **Expected Output (Phase 2):**
 ```
-Total tools: 8
+Total tools: ~10
   - builtin::rag: 2 tools
   - mcp::hr-tools: 5 tools
-  - mcp::weather-data: 1 tools
+  - mcp::weather-data: 5 tools
 ```
 
 ### Step 3.4: Test HR MCP in Playground
@@ -504,7 +503,7 @@ What's the weather in New York and how many vacation days does Alice Johnson hav
 | Phase 1 | Phase 2 |
 |---------|---------|
 | 1 MCP Server (Weather) | 2 MCP Servers (Weather + HR) |
-| 3 tools | 8 tools |
+| ~5 tools | ~10 tools |
 | Weather queries only | Weather + Employee management |
 
 **What you learned:**
