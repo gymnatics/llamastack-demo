@@ -135,8 +135,27 @@ A "hardware profile" tells OpenShift what computer resources your AI model needs
    | Minimum | `1` |
    | Maximum | `1` |
 
-6. **Click** the **"Create"** button
+6. **Add a Node Selector** (so the model runs on GPU nodes):
+   - **Scroll down** to find **"Node selectors"**
+   - **Click** **"Add node selector"**
+   - Enter:
+     | Key | Value |
+     |-----|-------|
+     | `nvidia.com/gpu.present` | `true` |
 
+7. **Add a Toleration** (so the model can use tainted GPU nodes):
+   - **Scroll down** to find **"Tolerations"**
+   - **Click** **"Add toleration"**
+   - Enter:
+     | Field | Value |
+     |-------|-------|
+     | Key | `nvidia.com/gpu` |
+     | Operator | `Exists` |
+     | Effect | `NoSchedule` |
+
+8. **Click** the **"Create"** button
+
+> 📝 **Why do we need tolerations?** GPU nodes often have "taints" that prevent regular workloads from running on them. The toleration tells OpenShift that our AI model is allowed to use these GPU nodes.
 
 ✅ **Success!** You should see `gpu-profile` in the hardware profiles list.
 
