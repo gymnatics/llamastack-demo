@@ -583,7 +583,7 @@ A "notebook" is an interactive document where you can run code. Let's try it!
 9. **Click** **"Git"** → **"Clone a Repository"**
 10. **Paste** this URL:
     ```
-    https://github.com/<org>/llamastack-demo.git
+    https://github.com/gymnatics/llamastack-demo.git
     ```
 11. **Click** **"Clone"**
 12. In the file browser on the left, **navigate to:**
