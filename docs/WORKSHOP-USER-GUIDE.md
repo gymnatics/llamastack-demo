@@ -184,26 +184,27 @@ A "hardware profile" tells OpenShift what computer resources your AI model needs
 
 ---
 
-## Step 1.4: Create a Model Connection
+## Step 1.4: Add Model Details
 
 A "model connection" tells OpenShift where to download the AI model from.
 
-1. **Click** on **"Data Science Projects"** in the left menu
+1. **Click** on **"Projects"** in the left menu
 2. **Click** on your project name (`user-XX`)
-3. **Click** on the **"Connections"** tab
-4. **Click** the **"Add connection"** button
+3. **Click** on the **"Deployments"** tab
+4. **Click** the **"Deploy Model"** button
 5. **Select** **"URI"** as the connection type
 
 6. **Fill in the form:**
 
    | Field | What to Enter |
    |-------|---------------|
-   | **Name** | `llama-32-3b-instruct` |
    | **URI** | (copy the text below exactly) |
 
    ```
    oci://quay.io/redhat-ai-services/modelcar-catalog:llama-3.2-3b-instruct
-   ```
+   ```   
+   | **Name** | `llama-32-3b-instruct` |
+   | **Model Type** | Generative AI Model |
 
    > 💡 **Tip:** Triple-click the URI above to select it all, then copy and paste.
 
@@ -223,7 +224,7 @@ A "model connection" tells OpenShift where to download the AI model from.
 
 ---
 
-## Step 1.5: Deploy Your AI Model
+## Step 1.5: Add Model Deployment Details
 
 Now let's deploy the actual AI model!
 
@@ -235,11 +236,10 @@ Now let's deploy the actual AI model!
 
    | Field | What to Select/Enter |
    |-------|---------------------|
-   | **Model name** | `llama-32-3b-instruct` |
-   | **Serving runtime** | `vLLM NVIDIA GPU ServingRuntime for KServe` |
-   | **Model framework** | `vLLM` |
+   | **Model deployment name** | `llama-32-3b-instruct` |
    | **Hardware profile** | Select `gpu-profile` (the one you created) |
-   | **Model connection** | Select `llama-32-3b-instruct` |
+   | **Serving runtime** | `vLLM NVIDIA GPU ServingRuntime for KServe` |
+
 
 5. **Scroll down** to find **"Model server configuration"**
    - Set **Replicas** to `1`
@@ -259,107 +259,66 @@ Now let's deploy the actual AI model!
 
 ---
 
-## Step 1.6: Enable Tool Calling (Required for MCP!)
+## Step 1.6: Advanced Settings - Enable Tool Calling (Required for MCP!)
 
-The model is deployed, but we need to enable **tool calling** so it can use MCP servers. This requires a quick terminal command.
+Now we need to enable **tool calling** so the model can use MCP servers. This is done in the "Advanced settings" step of the deployment wizard.
 
-### Open Your Terminal
+1. **Click** on **"3. Advanced settings"** in the left sidebar (or click Next)
 
-**On Mac:** Press `Cmd + Space`, type `Terminal`, press `Enter`
-**On Windows:** Press `Windows key`, type `cmd` or `PowerShell`, press `Enter`
-**On Linux:** Press `Ctrl + Alt + T`
+2. **Under "Model playground availability":**
+   - ✅ Check **"Add as AI asset endpoint"**
 
-### Run the Patch Command
+3. **Under "Model access":**
+   - ✅ Check **"Make model deployment available through an external route"** (optional)
+   - ✅ Check **"Require token authentication"** (optional, for security)
 
-**Step 1: Set your namespace variable** (replace XX with your number):
+4. **Under "Configuration parameters":**
+   - ✅ Check **"Add custom runtime arguments"**
+   - **In the text box, enter these three lines** (copy and paste):
 
-```bash
-export NS=user-XX
-```
+   ```
+   --enable-auto-tool-choice
+   --tool-call-parser=llama3_json
+   --chat-template=/opt/app-root/template/tool_chat_template_llama3.2_json.jinja
+   ```
 
-For example, if you're user 5:
-```bash
-export NS=user-05
-```
+   > ⚠️ **Important:** Each argument must be on its own line!
 
-**Step 2: Enable tool calling on your model:**
+> 📸 **SCREENSHOT NEEDED:** `screenshot-1.6-advanced-settings.png`
+> - Show: Advanced settings page with all checkboxes and custom runtime arguments filled in
+> - Highlight: The "Add custom runtime arguments" checkbox and text box with the three arguments
+> - Size: Full form view
 
-```bash
-oc patch servingruntime llama-32-3b-instruct -n $NS --type='json' -p='[
-  {"op": "add", "path": "/spec/containers/0/args/-", "value": "--enable-auto-tool-choice"},
-  {"op": "add", "path": "/spec/containers/0/args/-", "value": "--tool-call-parser=llama3_json"},
-  {"op": "add", "path": "/spec/containers/0/args/-", "value": "--chat-template=/opt/app-root/template/tool_chat_template_llama3.2_json.jinja"}
-]'
-```
+5. **Click** the **"Deploy"** button
 
-You should see:
-```
-servingruntime.serving.kserve.io/llama-32-3b-instruct patched
-```
-
-**Step 3: Restart the model to apply changes:**
-
-```bash
-oc delete pod -l serving.kserve.io/inferenceservice=llama-32-3b-instruct -n $NS
-```
-
-> 📝 **What did we just do?**
-> - Added `--enable-auto-tool-choice` - Allows the model to decide when to use tools
-> - Added `--tool-call-parser=llama3_json` - Tells vLLM how to parse tool calls for Llama models
-> - Added `--chat-template` - Uses the correct chat format for tool calling
-
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.6-terminal-patch.png`
-> - Show: Terminal with the patch command and success output
-> - Highlight: "patched" message
-> - Size: Terminal window
+> 📝 **What do these arguments do?**
+> - `--enable-auto-tool-choice` - Allows the model to decide when to use tools
+> - `--tool-call-parser=llama3_json` - Tells vLLM how to parse tool calls for Llama models
+> - `--chat-template` - Uses the correct chat format for tool calling
 
 ---
 
-## Step 1.7: Wait for Your Model to Restart
+## Step 1.7: Wait for Your Model to Start
 
-After the patch, the model needs to restart. This takes a few minutes.
+The model needs a few minutes to download and start up.
 
 ### Watch the Status in the Dashboard
 
-1. **Go back to** the OpenShift AI Dashboard
-2. **Click** on **"Data Science Projects"** → your project (`user-XX`) → **"Models"** tab
-3. **Watch** the status indicator next to `llama-32-3b-instruct`:
-   - 🟡 **Pending** → Model is restarting
-   - 🔵 **Progressing** → Model is starting up
+1. **Stay on** the Deployments page, or go to **"Projects"** → your project (`user-XX`) → **"Deployments"** tab
+2. **Watch** the status indicator next to `llama-32-3b-instruct`:
+   - 🟡 **Pending** → Model is being prepared
+   - 🔵 **Progressing** → Model is downloading/starting
    - 🟢 **Running** → Model is ready! ✅
 
 > ⏱️ **This takes about 3-5 minutes.** Feel free to stretch or grab water!
 
 > 📸 **SCREENSHOT NEEDED:** `screenshot-1.7a-model-pending.png`
-> - Show: Models list with model in "Pending" or "Progressing" status
+> - Show: Deployments list with model in "Pending" or "Progressing" status
 > - Highlight: Status indicator (yellow/blue)
 > - Size: Main content area
 
-### Or Check in Your Terminal
-
-You can also wait using the terminal:
-
-```bash
-echo "⏳ Waiting for model to restart (this takes 3-5 minutes)..."
-oc wait --for=condition=ready pod -l serving.kserve.io/inferenceservice=llama-32-3b-instruct -n $NS --timeout=300s
-echo "✅ Model is ready with tool calling enabled!"
-```
-
-**Or check manually:**
-
-```bash
-oc get pods -n $NS | grep llama
-```
-
-When it's ready, you'll see:
-```
-llama-32-3b-instruct-predictor-xxxxx   3/3   Running   0   2m
-```
-
-The `3/3` and `Running` mean it's working!
-
 > 📸 **SCREENSHOT NEEDED:** `screenshot-1.7b-model-running.png`
-> - Show: Models list with model in "Running" status (green)
+> - Show: Deployments list with model in "Running" status (green)
 > - Highlight: Green status indicator
 > - Size: Main content area
 
