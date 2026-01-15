@@ -295,9 +295,66 @@ The "Playground" is a chat interface where you can talk to your AI. When you ena
 
 > 💡 You might see a loading indicator. Just wait for it to finish.
 
+> ⚠️ **Important:** You may see MCP servers (Weather, HR) listed in the AI Asset Endpoints page. However, **they are NOT connected to your AI yet!** The Playground is created with a default configuration that has NO MCP tools. We'll add them in the next step.
+
 ---
 
-## Step 2.4: Add Weather MCP to LlamaStack Config
+## Step 2.4: Test Your AI in the Playground!
+
+Let's chat with your AI!
+
+1. **Go to** the OpenShift AI Dashboard
+2. **Click** on **"GenAI Studio"** in the left menu
+3. **Click** on **"Playground"**
+4. You should see a chat interface
+5. **Select your model** from the dropdown (if not already selected)
+
+### Try these prompts:
+
+**First, a simple test:**
+```
+What is the capital of France?
+```
+
+Type it in the chat box and press Enter (or click Send).
+
+**Now, test the weather tools:**
+
+> 💡 **Tip:** The weather tools work best with specific requests. Here are some recommended prompts:
+
+**List available stations (simple, always works):**
+```
+List all available weather stations
+```
+
+**Get weather statistics:**
+```
+Get weather statistics
+```
+
+**Search for weather by location:**
+```
+Search for weather observations in New Delhi
+```
+
+```
+Search for weather in Tokyo with limit 3
+```
+
+**Get current weather for a specific station:**
+```
+Get current weather for station VIDP
+```
+
+> 📝 **Station codes:** VIDP = New Delhi, RJTT = Tokyo, KJFK = New York, EGLL = London, YSSY = Sydney
+
+🎉 **Amazing!** Your AI is using the weather tool to get real data!
+
+> ⚠️ **Troubleshooting:** If you get an error about "parameters could not be parsed", try using simpler prompts like "List all weather stations" or "Get weather statistics". The model sometimes has trouble with complex queries.
+
+---
+
+## Step 2.5: Add Weather MCP to LlamaStack Config
 
 Now we need to connect the Weather MCP server to your AI. The Playground created a ConfigMap called `llama-stack-config` - we'll patch it to add the MCP.
 
@@ -354,42 +411,7 @@ echo "✅ LlamaStack restarted with Weather MCP!"
 > - Replaced the ConfigMap with the patched version
 > - Restarted the pod to load the new config
 
----
 
-## Step 2.5: Test Your AI in the Playground!
-
-Let's chat with your AI!
-
-1. **Go to** the OpenShift AI Dashboard
-2. **Click** on **"GenAI Studio"** in the left menu
-3. **Click** on **"Playground"**
-4. You should see a chat interface
-5. **Select your model** from the dropdown (if not already selected)
-
-### Try these prompts:
-
-**First, a simple test:**
-```
-What is the capital of France?
-```
-
-Type it in the chat box and press Enter (or click Send).
-
-**Now, test the weather tool:**
-```
-What is the weather in New York City?
-```
-
-🎉 **Amazing!** Your AI is using the weather tool to get real data!
-
-**Try more weather questions:**
-```
-List all available weather stations
-```
-
-```
-What's the weather in Tokyo?
-```
 
 ---
 
@@ -428,15 +450,18 @@ A "notebook" is an interactive document where you can run code. Let's try it!
 1. **Go to** your project in OpenShift AI Dashboard
 2. **Click** on **"Workbenches"** tab
 3. **Click** **"Create workbench"**
-4. **Fill in:**
+4. **Fill in the form:**
 
    | Field | What to Select/Enter |
    |-------|---------------------|
-   | **Name** | `workshop-notebook` |
-   | **Image** | Select one that says `Jupyter` and `Python 3.11` or `3.12` |
-   | **Container size** | `Small` is fine |
+   | **Name** | `user-XX` (use your user number, e.g., `user-25`) |
+   | **Image selection** | `Jupyter | Data Science | CPU | Python 3.12` |
+   | **Version selection** | `2025.2` (or latest available) |
+   | **Deployment size** | `Small` is fine |
 
-5. **Click** **"Create"**
+   > 💡 **Tip:** You can leave the Description, Environment variables, Cluster storage, and Connections sections as default.
+
+5. **Click** **"Create workbench"** button at the bottom
 6. **Wait** for the status to show **"Running"** (1-2 minutes)
 7. **Click** the **"Open"** link to launch JupyterLab
 
@@ -449,19 +474,31 @@ A "notebook" is an interactive document where you can run code. Let's try it!
     https://github.com/gymnatics/llamastack-demo.git
     ```
 11. **Click** **"Clone"**
-12. In the file browser on the left, **navigate to:**
+
+12. **Switch to the workshop branch:**
+    - In JupyterLab, open a **Terminal** (File → New → Terminal)
+    - Run these commands:
+      ```bash
+      cd llamastack-demo
+      git checkout workshop-branch
+      ```
+    - You should see: `Switched to branch 'workshop-branch'`
+
+13. In the file browser on the left, **navigate to:**
     `llamastack-demo` → `notebooks` → `workshop_client_demo.ipynb`
-13. **Double-click** to open it
+14. **Double-click** to open it
 
 ### Run the Notebook:
 
-14. **Find the cell** that says `PROJECT_NAME = "user-XX"`
-15. **Change** `user-XX` to your actual user number (e.g., `user-05`)
-16. **Click** the **"Run All"** button (▶▶) at the top, or go to **Run** → **Run All Cells**
+15. **Find the cell** that says `PROJECT_NAME = "user-XX"`
+16. **Change** `user-XX` to your actual user number (e.g., `user-25`)
+17. **Click** the **"Run All"** button (▶▶) at the top, or go to **Run** → **Run All Cells**
 
 **Look at the output!** You should see:
 - 1 LLM model available
 - About 5 MCP tools (Weather only)
+
+> 🎯 **Key Learning:** Even though you can see BOTH Weather and HR MCP servers in the AI Asset Endpoints UI, the notebook only shows Weather tools. That's because **only Weather is configured in your LlamaStack's `tool_groups`**. The UI shows what's *available*, but the ConfigMap controls what's *connected*.
 
 ✅ **Success!** You've completed Part 2!
 
@@ -590,32 +627,47 @@ You should now see **about 10 tools**, including:
 
 Go back to the **Playground** in your browser and try these prompts:
 
-**List employees:**
+> 💡 **Tip:** HR tools work well with direct requests. Here are recommended prompts:
+
+**List employees (simple, always works):**
 ```
-List all employees in the company
+List all employees
+```
+
+**Get specific employee info:**
+```
+Get employee info for EMP001
 ```
 
 **Check vacation balance:**
 ```
-What is the vacation balance for employee EMP001?
+Get vacation balance for employee EMP001
 ```
 
 **Find job openings:**
 ```
-What job openings are available?
+List all job openings
 ```
 
 **Create a vacation request:**
 ```
-Create a vacation request for EMP002 from 2026-02-10 to 2026-02-14
+Create a vacation request for employee EMP002 from 2026-02-10 to 2026-02-14
 ```
 
-**Use BOTH tools in one question:**
+> 📝 **Employee IDs:** EMP001 = Alice Johnson, EMP002 = Bob Smith, EMP003 = Carol Williams
+
+**Use BOTH tools together:**
 ```
-What's the weather in Tokyo, and how many vacation days does Alice Johnson have?
+List all weather stations and list all employees
+```
+
+```
+Get weather statistics and list job openings
 ```
 
 🎉 **Your AI is now using BOTH the weather AND HR tools!**
+
+> ⚠️ **Troubleshooting:** If a complex query fails, try breaking it into simpler requests. For example, instead of "What's the weather in Tokyo and how many vacation days does Alice have?", try asking each question separately.
 
 
 
