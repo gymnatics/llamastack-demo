@@ -191,10 +191,8 @@ echo -e "${YELLOW}
 │     • Click 'Add to Playground' on your model                   │
 │     • Wait for LlamaStack Distribution (~2 min)                 │
 │                                                                 │
-│  3. REGISTER MCP ENDPOINTS:                                     │
-│     • Go to AI Asset Endpoints → Add endpoint → MCP Server      │
-│     • Weather: http://weather-mongodb-mcp:8000/mcp              │
-│     • HR: http://hr-mcp-server:8000/mcp                         │
+│  NOTE: MCP endpoints are added via ConfigMap, not UI!           │
+│  The script will apply the config after you enable Playground.  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ${NC}"
@@ -249,10 +247,44 @@ else
 fi
 
 # ============================================================
-# STEP 6: Test Phase 1 (Weather Only)
+# STEP 6: Apply Phase 1 Config (Weather MCP)
 # ============================================================
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}STEP 6: Test Phase 1 - Weather MCP Only${NC}"
+echo -e "${BLUE}STEP 6: Apply Phase 1 Config (Add Weather MCP to LlamaStack)${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+echo -e "${YELLOW}📝 Applying Phase 1 LlamaStack config (Weather MCP)...${NC}"
+oc apply -f "$REPO_ROOT/manifests/workshop/llama-stack-config-workshop-phase1.yaml" -n $NAMESPACE
+
+echo -e "${YELLOW}🔄 Restarting LlamaStack to pick up new config...${NC}"
+oc delete pod -l app=lsd-genai-playground -n $NAMESPACE
+
+echo -e "${YELLOW}⏳ Waiting for LlamaStack to restart...${NC}"
+sleep 10
+wait_for_deployment "lsd-genai-playground" 120
+
+# Verify Weather tools
+echo -e "${YELLOW}🔍 Verifying Phase 1 tools (Weather only)...${NC}"
+sleep 5
+oc exec deployment/lsd-genai-playground -n $NAMESPACE -- \
+    curl -s http://localhost:8321/v1/tools 2>/dev/null | python3 -c "
+import json,sys
+try:
+    data=json.load(sys.stdin)
+    tools=data if isinstance(data,list) else data.get('data',[])
+    mcps=[t for t in tools if t.get('toolgroup_id','').startswith('mcp::')]
+    print(f'MCP Tools: {len(mcps)}')
+    for t in mcps:
+        print(f'  - {t.get(\"toolgroup_id\")}/{t.get(\"name\")}')
+except:
+    print('Could not parse tools response')
+" || echo -e "${RED}Could not connect to LlamaStack${NC}"
+
+# ============================================================
+# STEP 7: Test Phase 1 (Weather Only)
+# ============================================================
+echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}STEP 7: Test Phase 1 - Weather MCP Only${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e "${YELLOW}
@@ -269,10 +301,10 @@ echo -e "${YELLOW}Press Enter to continue to Phase 2 setup...${NC}"
 read -r
 
 # ============================================================
-# STEP 7: Apply Phase 2 Config (Add HR to toolgroup)
+# STEP 8: Apply Phase 2 Config (Add HR to toolgroup)
 # ============================================================
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}STEP 7: Apply Phase 2 Config (Add HR MCP to toolgroup)${NC}"
+echo -e "${BLUE}STEP 8: Apply Phase 2 Config (Add HR MCP to toolgroup)${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e "${YELLOW}📝 Applying Phase 2 LlamaStack config...${NC}"
@@ -307,10 +339,10 @@ except:
 " || echo -e "${RED}Could not connect to LlamaStack${NC}"
 
 # ============================================================
-# STEP 8: Test Phase 2 (Weather + HR)
+# STEP 9: Test Phase 2 (Weather + HR)
 # ============================================================
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}STEP 8: Test Phase 2 - Weather + HR MCPs${NC}"
+echo -e "${BLUE}STEP 9: Test Phase 2 - Weather + HR MCPs${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e "${YELLOW}

@@ -411,55 +411,70 @@ When you see `✅ Weather tool ready!` and `✅ HR tool ready!`, you're good to 
 
 ---
 
-## Step 2.7: Register the Tools in OpenShift
+## Step 2.7: Enable the AI Playground
 
-Now we need to tell OpenShift about these tools.
+The "Playground" is a chat interface where you can talk to your AI. When you enable it, a LlamaStack Distribution is created with your model.
 
 1. **Go back to your browser** (OpenShift AI Dashboard)
 2. Make sure you're in your project (`user-XX`)
 3. **Click** on **"AI Asset Endpoints"** in the left menu or project tabs
+4. **Find** your model `llama-32-3b-instruct` in the list
+5. **Click** the **"Add to Playground"** button next to it
+6. **Wait** about 2 minutes for the Playground to be created
 
-### Register the Weather Tool:
+> 💡 You might see a loading indicator. Just wait for it to finish.
 
-4. **Click** **"Add endpoint"**
-5. **Select** **"MCP Server"**
-6. **Fill in:**
+> 📸 **SCREENSHOT NEEDED:** `screenshot-2.7a-add-to-playground-button.png`
+> - Show: AI Asset Endpoints page with model listed
+> - Highlight: "Add to Playground" button next to the model
+> - Size: Row containing the model
 
-   | Field | What to Enter |
-   |-------|---------------|
-   | **Name** | `weather-mcp` |
-   | **URL** | `http://weather-mongodb-mcp:8000/mcp` |
-
-7. **Click** **"Add"** or **"Create"**
-
-### Register the HR Tool:
-
-8. **Click** **"Add endpoint"** again
-9. **Select** **"MCP Server"**
-10. **Fill in:**
-
-    | Field | What to Enter |
-    |-------|---------------|
-    | **Name** | `hr-mcp` |
-    | **URL** | `http://hr-mcp-server:8000/mcp` |
-
-11. **Click** **"Add"** or **"Create"**
-
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.7a-add-mcp-endpoint.png`
-> - Show: Add endpoint dialog with MCP Server selected
-> - Highlight: Name and URL fields filled in for weather-mcp
-> - Size: Dialog only
-
-✅ **Success!** Both tools are registered.
-
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.7b-endpoints-registered.png`
-> - Show: AI Asset Endpoints page with both MCP servers listed
-> - Highlight: weather-mcp and hr-mcp entries
-> - Size: Main content area
+> 📸 **SCREENSHOT NEEDED:** `screenshot-2.7b-playground-creating.png`
+> - Show: Loading/creating indicator for Playground
+> - Highlight: Progress indicator
+> - Size: Relevant portion of screen
 
 ---
 
-## Step 2.8: Enable the AI Playground
+## Step 2.8: Add Weather MCP to LlamaStack Configuration
+
+Now we need to tell LlamaStack about the Weather MCP server. This is done by updating the LlamaStack configuration file (ConfigMap).
+
+**Go back to your terminal and run these commands:**
+
+```bash
+# First, let's see the current LlamaStack config
+oc get configmap llama-stack-config -n $NS -o yaml | head -50
+```
+
+You'll see a YAML configuration. Now let's apply a config that includes the Weather MCP:
+
+```bash
+# Apply the Phase 1 config (includes Weather MCP)
+oc apply -f manifests/workshop/llama-stack-config-workshop-phase1.yaml -n $NS
+```
+
+> ⚠️ **Note:** If this file doesn't exist yet, we'll create it in the next step.
+
+```bash
+# Restart LlamaStack to pick up the new config
+oc delete pod -l app=lsd-genai-playground -n $NS
+
+# Wait for it to restart
+echo "⏳ Waiting for LlamaStack to restart..."
+sleep 30
+oc wait --for=condition=available deployment/lsd-genai-playground -n $NS --timeout=120s
+echo "✅ LlamaStack restarted!"
+```
+
+> 📝 **What just happened?** 
+> - The ConfigMap tells LlamaStack which MCP servers to connect to
+> - We added the Weather MCP URL to the `tool_groups` section
+> - Restarting the pod makes LlamaStack read the new config
+
+---
+
+## Step 2.9: Test Your AI in the Playground!
 
 The "Playground" is a chat interface where you can talk to your AI.
 
@@ -486,10 +501,11 @@ The "Playground" is a chat interface where you can talk to your AI.
 
 Let's chat with your AI!
 
-1. **Click** on **"GenAI Studio"** in the left menu
-2. **Click** on **"Playground"**
-3. You should see a chat interface
-4. **Select your model** from the dropdown (if not already selected)
+1. **Go to** the OpenShift AI Dashboard
+2. **Click** on **"GenAI Studio"** in the left menu
+3. **Click** on **"Playground"**
+4. You should see a chat interface
+5. **Select your model** from the dropdown (if not already selected)
 
 ### Try these prompts:
 
@@ -982,33 +998,31 @@ Use this checklist to capture all required screenshots before the workshop.
 
 | # | Filename | What to Capture |
 |---|----------|-----------------|
-| 12 | `screenshot-2.7a-add-mcp-endpoint.png` | Add MCP endpoint dialog with fields filled |
-| 13 | `screenshot-2.7b-endpoints-registered.png` | AI Asset Endpoints showing both MCPs |
-| 14 | `screenshot-2.8a-add-to-playground-button.png` | Model row with "Add to Playground" button |
-| 15 | `screenshot-2.8b-playground-creating.png` | Playground creation progress indicator |
-| 16 | `screenshot-2.9a-playground-interface.png` | GenAI Studio Playground - full interface |
-| 17 | `screenshot-2.9b-playground-simple-response.png` | Playground with simple Q&A (capital of France) |
-| 18 | `screenshot-2.9c-playground-weather-tool.png` | Playground showing weather tool in action |
-| 19 | `screenshot-2.11a-create-workbench.png` | Create workbench form |
-| 20 | `screenshot-2.11b-workbench-running.png` | Workbenches list with "Open" link |
-| 21 | `screenshot-2.11c-jupyterlab-git-clone.png` | JupyterLab Git clone dialog |
-| 22 | `screenshot-2.11d-jupyterlab-file-browser.png` | JupyterLab file browser showing notebook |
-| 23 | `screenshot-2.11e-notebook-project-name.png` | Notebook cell with PROJECT_NAME variable |
-| 24 | `screenshot-2.11f-notebook-output-phase1.png` | Notebook output - Phase 1 (~3 tools) |
+| 12 | `screenshot-2.7a-add-to-playground-button.png` | Model row with "Add to Playground" button |
+| 13 | `screenshot-2.7b-playground-creating.png` | Playground creation progress indicator |
+| 14 | `screenshot-2.9a-playground-interface.png` | GenAI Studio Playground - full interface |
+| 15 | `screenshot-2.9b-playground-simple-response.png` | Playground with simple Q&A (capital of France) |
+| 16 | `screenshot-2.9c-playground-weather-tool.png` | Playground showing weather tool in action |
+| 17 | `screenshot-2.11a-create-workbench.png` | Create workbench form |
+| 18 | `screenshot-2.11b-workbench-running.png` | Workbenches list with "Open" link |
+| 19 | `screenshot-2.11c-jupyterlab-git-clone.png` | JupyterLab Git clone dialog |
+| 20 | `screenshot-2.11d-jupyterlab-file-browser.png` | JupyterLab file browser showing notebook |
+| 21 | `screenshot-2.11e-notebook-project-name.png` | Notebook cell with PROJECT_NAME variable |
+| 22 | `screenshot-2.11f-notebook-output-phase1.png` | Notebook output - Phase 1 (~3 tools) |
 
 ## Part 3: Add HR MCP to LlamaStack
 
 | # | Filename | What to Capture |
 |---|----------|-----------------|
-| 25 | `screenshot-3.5a-playground-hr-employees.png` | Playground with employee list response |
-| 26 | `screenshot-3.5b-playground-hr-vacation.png` | Playground with vacation balance response |
-| 27 | `screenshot-3.5c-playground-combined-query.png` | Playground with combined weather+HR query ⭐ |
+| 23 | `screenshot-3.5a-playground-hr-employees.png` | Playground with employee list response |
+| 24 | `screenshot-3.5b-playground-hr-vacation.png` | Playground with vacation balance response |
+| 25 | `screenshot-3.5c-playground-combined-query.png` | Playground with combined weather+HR query ⭐ |
 
 ## Part 5: Re-run Notebook
 
 | # | Filename | What to Capture |
 |---|----------|-----------------|
-| 28 | `screenshot-5.3-notebook-output-phase2.png` | Notebook output - Phase 2 (~8 tools) |
+| 26 | `screenshot-5.3-notebook-output-phase2.png` | Notebook output - Phase 2 (~8 tools) |
 
 ---
 
