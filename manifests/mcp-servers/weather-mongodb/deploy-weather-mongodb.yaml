@@ -84,10 +84,15 @@ spec:
       containers:
       - name: init-data
         image: python:3.11-slim
+        env:
+        - name: HOME
+          value: /tmp
+        - name: PYTHONUSERBASE
+          value: /tmp/.local
         command: ["/bin/sh", "-c"]
         args:
         - |
-          pip install pymongo
+          pip install --user pymongo
           python << 'EOF'
           from pymongo import MongoClient
           from datetime import datetime, timedelta
