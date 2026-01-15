@@ -92,77 +92,21 @@ A "project" is your own workspace where you'll deploy your AI model.
 
 ---
 
-## Step 1.3: Create a Hardware Profile
+## Step 1.3: Understanding Hardware Profiles (Admin Demo)
 
-A "hardware profile" tells OpenShift what computer resources your AI model needs (like a GPU for fast processing).
+> 🎓 **This is a demo by your instructor** - you don't need to do anything here, just watch and learn!
 
-1. **Click** on **"Settings"** in the left menu
-2. **Click** on **"Hardware profiles"**
-3. **Click** the **"Create hardware profile"** button
+A "hardware profile" tells OpenShift what computer resources your AI model needs (like a GPU for fast processing). Your instructor will show you how hardware profiles work.
 
-4. **Fill in the basic info:**
+**What the instructor will show:**
+- Where hardware profiles are configured (Settings → Hardware profiles)
+- The `gpu-profile` that's already created for this workshop
+- How it specifies CPU, Memory, and GPU resources
+- Node selectors and tolerations (so pods run on GPU nodes)
 
-   | Field | What to Enter |
-   |-------|---------------|
-   | **Name** | `gpu-profile` |
-   | **Display name** | `GPU Profile` |
-   | **Description** | `Profile with GPU for AI models` |
+> 📝 **Note:** Only administrators can create hardware profiles. As a user, you'll **select** the pre-created `gpu-profile` when deploying your model in the next step.
 
-5. **Add the resources** (click "Add identifier" for each):
-
-   **First resource (CPU):**
-   | Field | Value |
-   |-------|-------|
-   | Display name | `CPU` |
-   | Identifier | `cpu` |
-   | Resource type | `CPU` |
-   | Default | `4` |
-   | Minimum | `1` |
-   | Maximum | `8` |
-
-   **Second resource (Memory):**
-   | Field | Value |
-   |-------|-------|
-   | Display name | `Memory` |
-   | Identifier | `memory` |
-   | Resource type | `Memory` |
-   | Default | `16Gi` |
-   | Minimum | `8Gi` |
-   | Maximum | `32Gi` |
-
-   **Third resource (GPU):**
-   | Field | Value |
-   |-------|-------|
-   | Display name | `GPU` |
-   | Identifier | `nvidia.com/gpu` |
-   | Resource type | `Accelerator` |
-   | Default | `1` |
-   | Minimum | `1` |
-   | Maximum | `1` |
-
-6. **Add a Node Selector** (so the model runs on GPU nodes):
-   - **Scroll down** to find **"Node selectors"**
-   - **Click** **"Add node selector"**
-   - Enter:
-     | Key | Value |
-     |-----|-------|
-     | `nvidia.com/gpu.present` | `true` |
-
-7. **Add a Toleration** (so the model can use tainted GPU nodes):
-   - **Scroll down** to find **"Tolerations"**
-   - **Click** **"Add toleration"**
-   - Enter:
-     | Field | Value |
-     |-------|-------|
-     | Key | `nvidia.com/gpu` |
-     | Operator | `Exists` |
-     | Effect | `NoSchedule` |
-
-8. **Click** the **"Create"** button
-
-> 📝 **Why do we need tolerations?** GPU nodes often have "taints" that prevent regular workloads from running on them. The toleration tells OpenShift that our AI model is allowed to use these GPU nodes.
-
-✅ **Success!** You should see `gpu-profile` in the hardware profiles list.
+✅ **After the demo**, continue to the next step to deploy your model.
 
 
 ---
