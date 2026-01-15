@@ -535,7 +535,9 @@ LLM Models: 2
 
 **Step 2: Demo via Notebook**
 
-Since the Playground doesn't support external models yet, the admin demonstrates using a notebook:
+Since the Playground doesn't support external models yet, the admin demonstrates using a notebook.
+
+> **Note:** The admin notebook is in `notebooks/admin/azure_openai_demo.ipynb` - this is NOT shared with participants.
 
 ```python
 # In admin's notebook - show switching between models
