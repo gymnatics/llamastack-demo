@@ -462,6 +462,63 @@ The "Playground" is a chat interface where you can talk to your AI. When you ena
 
 ---
 
+## Step 2.8.5: Add Weather MCP to LlamaStack Config
+
+Now we need to add the Weather MCP server to the LlamaStack configuration. The Playground created a ConfigMap called `llama-stack-config` - we'll patch it to add the MCP.
+
+**Go back to your terminal and run these commands:**
+
+```bash
+# Step 1: Get the current config
+oc get configmap llama-stack-config -n $NS -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
+
+# Step 2: Check current tool_groups (should only have builtin::rag)
+echo "Current tool_groups:"
+grep -A5 "tool_groups:" /tmp/current-config.yaml
+```
+
+You should see only `builtin::rag`. Now let's add the Weather MCP:
+
+```bash
+# Step 3: Add Weather MCP to the config
+cat /tmp/current-config.yaml | sed 's/tool_groups:/tool_groups:\
+- toolgroup_id: mcp::weather-data\
+  provider_id: model-context-protocol\
+  mcp_endpoint:\
+    uri: http:\/\/weather-mongodb-mcp:8000\/mcp/' > /tmp/patched-config.yaml
+
+# Step 4: Verify the patch looks correct
+echo "Patched tool_groups:"
+grep -A10 "tool_groups:" /tmp/patched-config.yaml
+```
+
+You should now see both `mcp::weather-data` and `builtin::rag`.
+
+```bash
+# Step 5: Apply the patched config
+oc create configmap llama-stack-config \
+  --from-file=run.yaml=/tmp/patched-config.yaml \
+  -n $NS \
+  --dry-run=client -o yaml | oc replace -f -
+
+# Step 6: Restart LlamaStack to pick up the new config
+oc delete pod -l app=lsd-genai-playground -n $NS
+
+# Step 7: Wait for restart
+echo "⏳ Waiting for LlamaStack to restart..."
+sleep 20
+oc wait --for=condition=ready pod -l app=lsd-genai-playground -n $NS --timeout=120s
+echo "✅ LlamaStack restarted!"
+```
+
+> 📝 **What just happened?** 
+> - We exported the current config created by the operator
+> - Added the Weather MCP to the `tool_groups` section
+> - Replaced the ConfigMap with the patched version
+> - Restarted the pod to load the new config
+
+---
+
 ## Step 2.9: Test Your AI in the Playground!
 
 The "Playground" is a chat interface where you can talk to your AI.
@@ -652,33 +709,56 @@ Let's look at what tools your AI is currently configured to use.
 **In your terminal, run:**
 
 ```bash
-oc get configmap llama-stack-config -n $NS -o yaml | grep -A15 "tool_groups:"
+oc get configmap llama-stack-config -n $NS -o jsonpath='{.data.run\.yaml}' | grep -A10 "tool_groups:"
 ```
 
 You'll see something like:
 ```yaml
 tool_groups:
 - toolgroup_id: mcp::weather-data
-  ...
+  provider_id: model-context-protocol
+  mcp_endpoint:
+    uri: http://weather-mongodb-mcp:8000/mcp
+- toolgroup_id: builtin::rag
+  provider_id: rag-runtime
 ```
 
-Notice: Only the weather tool is listed!
+Notice: Only Weather MCP and builtin RAG are listed - no HR MCP yet!
 
 ---
 
-## Step 3.2: Update the Configuration
+## Step 3.2: Add HR MCP to the Configuration
 
-Now let's add the HR tool to the configuration.
+Now let's add the HR MCP tool to the configuration using the same patching approach.
 
-**Copy and paste this command:**
+**Copy and paste these commands:**
 
 ```bash
-oc apply -f manifests/workshop/llama-stack-config-workshop-phase2.yaml -n $NS
+# Step 1: Get the current config
+oc get configmap llama-stack-config -n $NS -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
+
+# Step 2: Add HR MCP to the config (after Weather MCP)
+cat /tmp/current-config.yaml | sed 's/- toolgroup_id: builtin::rag/- toolgroup_id: mcp::hr-tools\
+  provider_id: model-context-protocol\
+  mcp_endpoint:\
+    uri: http:\/\/hr-mcp-server:8000\/mcp\
+- toolgroup_id: builtin::rag/' > /tmp/patched-config.yaml
+
+# Step 3: Verify the patch
+echo "New tool_groups:"
+grep -A15 "tool_groups:" /tmp/patched-config.yaml
 ```
 
-You should see:
-```
-configmap/llama-stack-config configured
+You should now see **three** entries: `mcp::weather-data`, `mcp::hr-tools`, and `builtin::rag`.
+
+```bash
+# Step 4: Apply the patched config
+oc create configmap llama-stack-config \
+  --from-file=run.yaml=/tmp/patched-config.yaml \
+  -n $NS \
+  --dry-run=client -o yaml | oc replace -f -
+
+echo "✅ Config updated!"
 ```
 
 ---
@@ -697,7 +777,7 @@ oc delete pod -l app=lsd-genai-playground -n $NS
 ```bash
 echo "⏳ Waiting for AI to restart (about 30 seconds)..."
 sleep 30
-oc wait --for=condition=available deployment/lsd-genai-playground -n $NS --timeout=120s
+oc wait --for=condition=ready pod -l app=lsd-genai-playground -n $NS --timeout=120s
 echo "✅ AI is ready with new tools!"
 ```
 
