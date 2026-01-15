@@ -1,169 +1,453 @@
-# LlamaStack Workshop - User Guide
+# 🎓 LlamaStack Workshop - User Guide
 
-> 📋 **Quick reference guide with copy-paste commands for workshop participants**
-
----
-
-## 🎯 Workshop Overview
-
-| Part | Duration | What You'll Do |
-|------|----------|----------------|
-| **Part 1** | 45 min | Create project → Hardware profile → Deploy model |
-| **Part 2** | 30 min | Deploy MCPs → Enable Playground → Test Weather → Run notebook |
-| **Part 3** | 30 min | Update LlamaStack config → Test HR tools |
-| **Part 4** | 30 min | Watch admin demo Azure OpenAI |
-| **Part 5** | 30 min | Re-run notebook with all tools |
+> **Welcome!** This guide will walk you through every step of the workshop. Don't worry if you're new to this - just follow along and copy-paste the commands exactly as shown.
 
 ---
 
-## 📝 Before You Start
+## 📋 What You'll Learn Today
 
-**Your assigned user number:** `user-XX` (replace XX with your number, e.g., `user-05`)
+By the end of this workshop, you will:
+- ✅ Deploy your own AI model on OpenShift
+- ✅ Connect AI tools (MCP servers) to your model
+- ✅ Chat with your AI using a web interface
+- ✅ See how easy it is to add new capabilities to AI
 
-**Login to OpenShift:**
+**Total time:** ~2.5 hours
+
+---
+
+## 🔢 Your User Number
+
+Throughout this guide, you'll see `user-XX`. **Replace XX with your assigned number.**
+
+For example, if you are **user 5**, then:
+- `user-XX` becomes `user-05`
+- `user-XX` becomes `user-05`
+
+> ⚠️ **Important:** Always use two digits! User 5 = `user-05`, User 12 = `user-12`
+
+**Write your user number here:** `user-____`
+
+---
+
+## 🖥️ Before We Start
+
+### What You Need
+
+1. **A web browser** (Chrome or Firefox recommended)
+2. **Access to OpenShift AI Dashboard** (your instructor will provide the URL)
+3. **A terminal** (for running commands)
+
+### Opening Your Terminal
+
+**On Mac:**
+1. Press `Cmd + Space` to open Spotlight
+2. Type `Terminal`
+3. Press `Enter`
+
+**On Windows:**
+1. Press `Windows key`
+2. Type `cmd` or `PowerShell`
+3. Press `Enter`
+
+**On Linux:**
+1. Press `Ctrl + Alt + T`
+
+### Logging into OpenShift
+
+Your instructor will give you a login command. It looks like this:
+
 ```bash
-oc login --token=<your-token> --server=<cluster-url>
+oc login --token=sha256~xxxxx --server=https://api.cluster.example.com:6443
 ```
 
+1. Copy the command your instructor provides
+2. Paste it into your terminal
+3. Press `Enter`
+
+You should see:
+```
+Logged into "https://api.cluster.example.com:6443" as "your-username"
+```
+
+> ❓ **Stuck?** Raise your hand and ask for help!
+
 ---
 
-## Part 1: Create Project & Deploy Model (45 min)
+# Part 1: Create Your Project & Deploy a Model (45 min)
 
-### Step 1.1: Create Your Project
+## Step 1.1: Open the OpenShift AI Dashboard
 
-1. Go to **OpenShift AI Dashboard** → **Data Science Projects**
-2. Click **Create data science project**
-3. Enter:
-   - **Name:** `user-XX` (your assigned number)
-   - **Description:** `Workshop project`
-4. Click **Create**
+1. Open your web browser
+2. Go to the URL your instructor provided
+3. Log in with your credentials
 
-### Step 1.2: Create Hardware Profile
+You should see the **OpenShift AI Dashboard** with a menu on the left side.
 
-1. Go to **Settings** → **Hardware profiles**
-2. Click **Create hardware profile**
-3. Configure:
+---
 
-| Field | Value |
-|-------|-------|
-| Name | `gpu-profile` |
-| Display name | `GPU Profile` |
+## Step 1.2: Create Your Project
 
-4. Add identifiers:
+A "project" is your own workspace where you'll deploy your AI model.
 
-| Resource | Identifier | Default | Min | Max |
-|----------|------------|---------|-----|-----|
-| CPU | `cpu` | 4 | 1 | 8 |
-| Memory | `memory` | 16Gi | 8Gi | 32Gi |
-| GPU | `nvidia.com/gpu` | 1 | 1 | 1 |
+1. **Click** on **"Data Science Projects"** in the left menu
+2. **Click** the blue **"Create data science project"** button (top right)
+3. **Fill in the form:**
 
-5. Click **Create**
+   | Field | What to Enter |
+   |-------|---------------|
+   | **Name** | `user-XX` (use your number!) |
+   | **Description** | `My workshop project` |
 
-### Step 1.3: Create Model Connection
+4. **Click** the **"Create"** button
 
-1. In your project, go to **Connections**
-2. Click **Add connection** → **URI**
-3. Enter:
-   - **Name:** `llama-3.2-3b-instruct`
-   - **URI:**
+✅ **Success!** You should now see your project `user-XX` in the list.
+
+---
+
+## Step 1.3: Create a Hardware Profile
+
+A "hardware profile" tells OpenShift what computer resources your AI model needs (like a GPU for fast processing).
+
+1. **Click** on **"Settings"** in the left menu
+2. **Click** on **"Hardware profiles"**
+3. **Click** the **"Create hardware profile"** button
+
+4. **Fill in the basic info:**
+
+   | Field | What to Enter |
+   |-------|---------------|
+   | **Name** | `gpu-profile` |
+   | **Display name** | `GPU Profile` |
+   | **Description** | `Profile with GPU for AI models` |
+
+5. **Add the resources** (click "Add identifier" for each):
+
+   **First resource (CPU):**
+   | Field | Value |
+   |-------|-------|
+   | Display name | `CPU` |
+   | Identifier | `cpu` |
+   | Resource type | `CPU` |
+   | Default | `4` |
+   | Minimum | `1` |
+   | Maximum | `8` |
+
+   **Second resource (Memory):**
+   | Field | Value |
+   |-------|-------|
+   | Display name | `Memory` |
+   | Identifier | `memory` |
+   | Resource type | `Memory` |
+   | Default | `16Gi` |
+   | Minimum | `8Gi` |
+   | Maximum | `32Gi` |
+
+   **Third resource (GPU):**
+   | Field | Value |
+   |-------|-------|
+   | Display name | `GPU` |
+   | Identifier | `nvidia.com/gpu` |
+   | Resource type | `Accelerator` |
+   | Default | `1` |
+   | Minimum | `1` |
+   | Maximum | `1` |
+
+6. **Click** the **"Create"** button
+
+✅ **Success!** You should see `gpu-profile` in the hardware profiles list.
+
+---
+
+## Step 1.4: Create a Model Connection
+
+A "model connection" tells OpenShift where to download the AI model from.
+
+1. **Click** on **"Data Science Projects"** in the left menu
+2. **Click** on your project name (`user-XX`)
+3. **Click** on the **"Connections"** tab
+4. **Click** the **"Add connection"** button
+5. **Select** **"URI"** as the connection type
+
+6. **Fill in the form:**
+
+   | Field | What to Enter |
+   |-------|---------------|
+   | **Name** | `llama-3.2-3b-instruct` |
+   | **URI** | (copy the text below exactly) |
+
    ```
    oci://quay.io/redhat-ai-services/modelcar-catalog:llama-3.2-3b-instruct
    ```
-4. Click **Create**
 
-### Step 1.4: Deploy the Model
+   > 💡 **Tip:** Triple-click the URI above to select it all, then copy and paste.
 
-1. Go to **Models** → **Deploy model**
-2. Configure:
-   - **Model name:** `llama-32-3b-instruct`
-   - **Serving runtime:** vLLM NVIDIA GPU ServingRuntime for KServe
-   - **Hardware profile:** `gpu-profile`
-   - **Model connection:** `llama-3.2-3b-instruct`
-3. Check ✅ **Make deployed models available as AI assets**
-4. Click **Deploy**
-5. ⏳ Wait 3-5 minutes for status to show **Running**
+7. **Click** the **"Create"** button
 
-### Step 1.5: Verify Model (Optional)
+✅ **Success!** You should see `llama-3.2-3b-instruct` in your connections list.
+
+---
+
+## Step 1.5: Deploy Your AI Model
+
+Now let's deploy the actual AI model!
+
+1. Make sure you're in your project (`user-XX`)
+2. **Click** on the **"Models"** tab
+3. **Click** the **"Deploy model"** button
+
+4. **Fill in the deployment form:**
+
+   | Field | What to Select/Enter |
+   |-------|---------------------|
+   | **Model name** | `llama-32-3b-instruct` |
+   | **Serving runtime** | `vLLM NVIDIA GPU ServingRuntime for KServe` |
+   | **Model framework** | `vLLM` |
+   | **Hardware profile** | Select `gpu-profile` (the one you created) |
+   | **Model connection** | Select `llama-3.2-3b-instruct` |
+
+5. **Scroll down** to find **"Model server configuration"**
+   - Set **Replicas** to `1`
+   - ✅ Check the box **"Make deployed models available as AI assets"**
+
+6. **Click** the **"Deploy"** button
+
+---
+
+## Step 1.6: Wait for Your Model to Start
+
+The model needs a few minutes to download and start up.
+
+1. You'll see your model in the list with a status indicator
+2. **Wait** for the status to change:
+   - 🟡 **Pending** → Model is being prepared
+   - 🔵 **Progressing** → Model is downloading/starting
+   - 🟢 **Running** → Model is ready! ✅
+
+> ⏱️ **This takes about 3-5 minutes.** Feel free to stretch or grab water!
+
+### How to Check if It's Ready (Optional)
+
+Open your terminal and run:
 
 ```bash
 oc get pods -n user-XX | grep llama
 ```
 
-Expected output:
+> ⚠️ **Remember:** Replace `user-XX` with your actual user number!
+
+When it's ready, you'll see:
 ```
-llama-32-3b-instruct-predictor-xxxxx   1/1   Running
+llama-32-3b-instruct-predictor-xxxxx   1/1   Running   0   2m
 ```
+
+The `1/1` and `Running` mean it's working!
+
+✅ **Success!** Your AI model is now running!
 
 ---
 
-## Part 2: Deploy MCPs & Enable Playground (30 min)
+# Part 2: Add AI Tools & Test the Playground (30 min)
 
-### Step 2.1: Clone the Workshop Repository
+Now we'll add "tools" that give your AI special abilities, like checking the weather!
+
+## Step 2.1: Open Your Terminal
+
+We need to run some commands. Open your terminal (see "Opening Your Terminal" above if you need help).
+
+---
+
+## Step 2.2: Set Up Your Workspace
+
+First, let's set a shortcut so you don't have to type your project name every time.
+
+**Copy and paste this command** (replace XX with your number):
+
+```bash
+export NS=user-XX
+```
+
+For example, if you're user 5:
+```bash
+export NS=user-05
+```
+
+Press `Enter`. You won't see any output - that's normal!
+
+---
+
+## Step 2.3: Download the Workshop Files
+
+Now let's download the files we need.
+
+**Copy and paste these commands one at a time:**
 
 ```bash
 git clone https://github.com/<org>/llamastack-demo.git
+```
+
+Press `Enter` and wait for it to finish.
+
+```bash
 cd llamastack-demo
+```
+
+Press `Enter`.
+
+```bash
 git checkout workshop-branch
 ```
 
-### Step 2.2: Deploy Both MCP Servers
+Press `Enter`.
+
+✅ **Success!** You now have all the workshop files.
+
+---
+
+## Step 2.4: Deploy the Weather Tool
+
+Let's give your AI the ability to check the weather!
+
+**Copy and paste this command:**
 
 ```bash
-# Set your namespace
-export NS=user-XX  # Change XX to your number!
-
-# Deploy Weather MCP
 oc apply -f manifests/mcp-servers/weather-mongodb/deploy-weather-mongodb.yaml -n $NS
+```
 
-# Deploy HR MCP
+Press `Enter`. You'll see several lines saying things were "created".
+
+---
+
+## Step 2.5: Deploy the HR Tool
+
+Let's also deploy an HR (Human Resources) tool. We'll use it later!
+
+**Copy and paste this command:**
+
+```bash
 oc apply -f manifests/workshop/deploy-hr-mcp-simple.yaml -n $NS
+```
 
-# Wait for deployments
+Press `Enter`.
+
+---
+
+## Step 2.6: Wait for the Tools to Start
+
+The tools need a minute to start up. Let's wait for them.
+
+**Copy and paste these commands one at a time:**
+
+```bash
+echo "⏳ Waiting for Weather tool..."
 oc wait --for=condition=available deployment/mongodb -n $NS --timeout=120s
 oc wait --for=condition=complete job/init-weather-data -n $NS --timeout=120s
 oc wait --for=condition=available deployment/weather-mongodb-mcp -n $NS --timeout=180s
-oc wait --for=condition=available deployment/hr-mcp-server -n $NS --timeout=180s
-
-echo "✅ Both MCP servers deployed!"
+echo "✅ Weather tool ready!"
 ```
 
-### Step 2.3: Register MCP Endpoints
+```bash
+echo "⏳ Waiting for HR tool..."
+oc wait --for=condition=available deployment/hr-mcp-server -n $NS --timeout=180s
+echo "✅ HR tool ready!"
+```
 
-1. Go to **AI Asset Endpoints** in your project
-2. Click **Add endpoint** → **MCP Server**
-3. Add Weather MCP:
-   - **Name:** `weather-mcp`
-   - **URL:** `http://weather-mongodb-mcp:8000/mcp`
-4. Add HR MCP:
-   - **Name:** `hr-mcp`
-   - **URL:** `http://hr-mcp-server:8000/mcp`
+When you see `✅ Weather tool ready!` and `✅ HR tool ready!`, you're good to go!
 
-### Step 2.4: Enable Playground
+---
 
-1. Go to **AI Asset Endpoints**
-2. Find your model `llama-32-3b-instruct`
-3. Click **Add to Playground**
-4. ⏳ Wait ~2 minutes for LlamaStack Distribution
+## Step 2.7: Register the Tools in OpenShift
 
-### Step 2.5: Test in Playground
+Now we need to tell OpenShift about these tools.
 
-1. Go to **GenAI Studio** → **Playground**
-2. Select your model
-3. Try these prompts:
+1. **Go back to your browser** (OpenShift AI Dashboard)
+2. Make sure you're in your project (`user-XX`)
+3. **Click** on **"AI Asset Endpoints"** in the left menu or project tabs
 
+### Register the Weather Tool:
+
+4. **Click** **"Add endpoint"**
+5. **Select** **"MCP Server"**
+6. **Fill in:**
+
+   | Field | What to Enter |
+   |-------|---------------|
+   | **Name** | `weather-mcp` |
+   | **URL** | `http://weather-mongodb-mcp:8000/mcp` |
+
+7. **Click** **"Add"** or **"Create"**
+
+### Register the HR Tool:
+
+8. **Click** **"Add endpoint"** again
+9. **Select** **"MCP Server"**
+10. **Fill in:**
+
+    | Field | What to Enter |
+    |-------|---------------|
+    | **Name** | `hr-mcp` |
+    | **URL** | `http://hr-mcp-server:8000/mcp` |
+
+11. **Click** **"Add"** or **"Create"**
+
+✅ **Success!** Both tools are registered.
+
+---
+
+## Step 2.8: Enable the AI Playground
+
+The "Playground" is a chat interface where you can talk to your AI.
+
+1. Stay on the **"AI Asset Endpoints"** page
+2. **Find** your model `llama-32-3b-instruct` in the list
+3. **Click** the **"Add to Playground"** button next to it
+4. **Wait** about 2 minutes for the Playground to be created
+
+> 💡 You might see a loading indicator. Just wait for it to finish.
+
+---
+
+## Step 2.9: Test Your AI in the Playground!
+
+Let's chat with your AI!
+
+1. **Click** on **"GenAI Studio"** in the left menu
+2. **Click** on **"Playground"**
+3. You should see a chat interface
+4. **Select your model** from the dropdown (if not already selected)
+
+### Try these prompts:
+
+**First, a simple test:**
 ```
 What is the capital of France?
 ```
 
+Type it in the chat box and press Enter (or click Send).
+
+**Now, test the weather tool:**
 ```
 What is the weather in New York City?
 ```
 
+🎉 **Amazing!** Your AI is using the weather tool to get real data!
+
+**Try more weather questions:**
 ```
 List all available weather stations
 ```
 
-### Step 2.6: Check Available Tools
+```
+What's the weather in Tokyo?
+```
+
+---
+
+## Step 2.10: Check What Tools Are Available
+
+Let's verify what tools your AI can use right now.
+
+**Go to your terminal and copy-paste this command:**
 
 ```bash
 oc exec deployment/lsd-genai-playground -n $NS -- \
@@ -172,58 +456,134 @@ import json,sys
 data=json.load(sys.stdin)
 tools=data if isinstance(data,list) else data.get('data',[])
 mcps=[t for t in tools if t.get('toolgroup_id','').startswith('mcp::')]
-print(f'MCP Tools: {len(mcps)}')
+print('='*50)
+print(f'🛠️  Available Tools: {len(mcps)}')
+print('='*50)
 for t in mcps:
-    print(f\"  - {t.get('toolgroup_id')}/{t.get('name')}\")"
+    print(f\"  • {t.get('name')}\")"
 ```
 
-**Expected:** ~3 Weather tools only
+You should see about **3 tools** (all weather-related).
 
-### Step 2.7: Run Notebook (First Time)
-
-1. Go to **Workbenches** → **Create workbench**
-   - **Name:** `workshop-notebook`
-   - **Image:** Jupyter Data Science (Python 3.12)
-2. Click **Create** and wait for it to start
-3. Click **Open** to launch JupyterLab
-4. In JupyterLab: **Git** → **Clone a Repository**
-   ```
-   https://github.com/<org>/llamastack-demo.git
-   ```
-5. Open `llamastack-demo/notebooks/workshop_client_demo.ipynb`
-6. Update `PROJECT_NAME = "user-XX"` with your number
-7. Run all cells
-
-**Expected:** ~3 tools (Weather MCP only)
+> 📝 **Note:** The HR tool is deployed but not connected to your AI yet. We'll do that in Part 3!
 
 ---
 
-## Part 3: Update LlamaStack Config (30 min)
+## Step 2.11: Run the Notebook (First Time)
 
-### Step 3.1: View Current Config
+A "notebook" is an interactive document where you can run code. Let's try it!
+
+### Create a Workbench:
+
+1. **Go to** your project in OpenShift AI Dashboard
+2. **Click** on **"Workbenches"** tab
+3. **Click** **"Create workbench"**
+4. **Fill in:**
+
+   | Field | What to Select/Enter |
+   |-------|---------------------|
+   | **Name** | `workshop-notebook` |
+   | **Image** | Select one that says `Jupyter` and `Python 3.11` or `3.12` |
+   | **Container size** | `Small` is fine |
+
+5. **Click** **"Create"**
+6. **Wait** for the status to show **"Running"** (1-2 minutes)
+7. **Click** the **"Open"** link to launch JupyterLab
+
+### Get the Workshop Notebook:
+
+8. In JupyterLab, look at the top menu
+9. **Click** **"Git"** → **"Clone a Repository"**
+10. **Paste** this URL:
+    ```
+    https://github.com/<org>/llamastack-demo.git
+    ```
+11. **Click** **"Clone"**
+12. In the file browser on the left, **navigate to:**
+    `llamastack-demo` → `notebooks` → `workshop_client_demo.ipynb`
+13. **Double-click** to open it
+
+### Run the Notebook:
+
+14. **Find the cell** that says `PROJECT_NAME = "user-XX"`
+15. **Change** `user-XX` to your actual user number (e.g., `user-05`)
+16. **Click** the **"Run All"** button (▶▶) at the top, or go to **Run** → **Run All Cells**
+
+**Look at the output!** You should see:
+- 1 LLM model available
+- About 3 MCP tools (Weather only)
+
+✅ **Success!** You've completed Part 2!
+
+---
+
+# Part 3: Add More Tools to Your AI (30 min)
+
+Now let's add the HR tool to your AI. This shows how easy it is to expand your AI's capabilities!
+
+## Step 3.1: See the Current Configuration
+
+Let's look at what tools your AI is currently configured to use.
+
+**In your terminal, run:**
 
 ```bash
-oc get configmap llama-stack-config -n $NS -o yaml | grep -A20 "tool_groups:"
+oc get configmap llama-stack-config -n $NS -o yaml | grep -A15 "tool_groups:"
 ```
 
-**Expected:** Only Weather MCP in toolgroup
+You'll see something like:
+```yaml
+tool_groups:
+- toolgroup_id: mcp::weather-data
+  ...
+```
 
-### Step 3.2: Apply Phase 2 Config
+Notice: Only the weather tool is listed!
+
+---
+
+## Step 3.2: Update the Configuration
+
+Now let's add the HR tool to the configuration.
+
+**Copy and paste this command:**
 
 ```bash
-# Apply new config (adds HR MCP to toolgroup)
 oc apply -f manifests/workshop/llama-stack-config-workshop-phase2.yaml -n $NS
+```
 
-# Restart LlamaStack
+You should see:
+```
+configmap/llama-stack-config configured
+```
+
+---
+
+## Step 3.3: Restart the AI to Apply Changes
+
+The AI needs to restart to pick up the new configuration.
+
+**Copy and paste these commands:**
+
+```bash
+echo "🔄 Restarting your AI..."
 oc delete pod -l app=lsd-genai-playground -n $NS
+```
 
-# Wait for restart
-echo "Waiting for LlamaStack to restart..."
+```bash
+echo "⏳ Waiting for AI to restart (about 30 seconds)..."
 sleep 30
 oc wait --for=condition=available deployment/lsd-genai-playground -n $NS --timeout=120s
+echo "✅ AI is ready with new tools!"
 ```
 
-### Step 3.3: Verify New Tools
+---
+
+## Step 3.4: Verify the New Tools
+
+Let's check that the HR tool is now available.
+
+**Copy and paste this command:**
 
 ```bash
 oc exec deployment/lsd-genai-playground -n $NS -- \
@@ -234,191 +594,223 @@ tools=data if isinstance(data,list) else data.get('data',[])
 groups={}
 for t in tools:
     tg=t.get('toolgroup_id','')
-    if tg not in groups: groups[tg]=0
-    groups[tg]+=1
-print(f'Total tools: {len(tools)}')
-for tg,count in sorted(groups.items()):
-    print(f'  - {tg}: {count} tools')"
+    if tg not in groups: groups[tg]=[]
+    groups[tg].append(t.get('name'))
+print('='*50)
+print(f'🛠️  Total Tools: {len(tools)}')
+print('='*50)
+for tg,names in sorted(groups.items()):
+    print(f'\n📦 {tg}:')
+    for n in names:
+        print(f'   • {n}')"
 ```
 
-**Expected:**
-```
-Total tools: 8
-  - builtin::rag: 2 tools
-  - mcp::hr-tools: 5 tools
-  - mcp::weather-data: 1 tools
-```
+You should now see **about 8 tools**, including:
+- Weather tools (from before)
+- HR tools (NEW!) like `list_employees`, `get_vacation_balance`, etc.
 
-### Step 3.4: Test HR MCP in Playground
+---
 
-Go to **GenAI Studio** → **Playground** and try:
+## Step 3.5: Test the HR Tool in the Playground
 
+Go back to the **Playground** in your browser and try these prompts:
+
+**List employees:**
 ```
 List all employees in the company
 ```
 
+**Check vacation balance:**
 ```
 What is the vacation balance for employee EMP001?
 ```
 
+**Find job openings:**
 ```
 What job openings are available?
 ```
 
+**Create a vacation request:**
 ```
 Create a vacation request for EMP002 from 2026-02-10 to 2026-02-14
 ```
 
-**Combined query (uses both MCPs!):**
+**Use BOTH tools in one question:**
 ```
-What's the weather in Tokyo and how many vacation days does Alice Johnson have?
+What's the weather in Tokyo, and how many vacation days does Alice Johnson have?
 ```
+
+🎉 **Your AI is now using BOTH the weather AND HR tools!**
 
 ---
 
-## Part 4: Watch Admin Demo (30 min)
+## Step 3.6: What You Just Learned
 
-The admin will demonstrate:
-- Adding Azure OpenAI as a second inference provider
-- Switching between local vLLM and cloud Azure models
-- Same API, different backends
+| Before (Part 2) | After (Part 3) |
+|-----------------|----------------|
+| 1 tool group (Weather) | 2 tool groups (Weather + HR) |
+| ~3 tools | ~8 tools |
+| Weather questions only | Weather + HR questions |
 
-**Key Takeaway:** LlamaStack abstracts multiple providers - clients don't need to change!
+**Key takeaway:** You added new capabilities to your AI by just updating a configuration file - no coding required!
 
 ---
 
-## Part 5: Re-run Notebook (30 min)
+# Part 4: Watch the Admin Demo (30 min)
 
-### Step 5.1: Re-run the Notebook
+Now the instructor will show you something cool: adding a cloud AI (Azure OpenAI) alongside your local AI.
 
-1. Open your workbench
-2. Open `workshop_client_demo.ipynb`
-3. **Restart kernel** (Kernel → Restart Kernel)
-4. Run all cells again
+**What you'll see:**
+- The same LlamaStack can use multiple AI providers
+- Switch between local (your GPU) and cloud (Azure) with one setting
+- The API stays the same - your code doesn't need to change!
 
-### Step 5.2: Compare Results
+> 📝 **Note:** Only the admin has the Azure API keys, so this is a demo only.
 
-| Run | MCP Servers | Tools |
-|-----|-------------|-------|
-| Part 2 (first) | Weather only | ~3 |
-| Part 5 (second) | Weather + HR | ~8 |
+---
 
-**Key Learning:** Same notebook code, different results! The code discovers available tools dynamically.
+# Part 5: Re-run the Notebook (30 min)
 
-### Step 5.3: Try Combined Queries
+Remember the notebook you ran in Part 2? Let's run it again and see the difference!
 
-In the notebook, modify the query cell:
+## Step 5.1: Open Your Notebook
+
+1. Go back to your **Workbench** (JupyterLab)
+2. Open `workshop_client_demo.ipynb` if it's not already open
+
+## Step 5.2: Restart and Re-run
+
+1. **Click** on **"Kernel"** in the top menu
+2. **Click** **"Restart Kernel and Run All Cells"**
+3. **Click** **"Restart"** to confirm
+
+## Step 5.3: Compare the Results!
+
+**Part 2 (first run):**
+- MCP Tools: ~3 (Weather only)
+
+**Part 5 (second run):**
+- MCP Tools: ~8 (Weather + HR)
+
+🎯 **The notebook code didn't change at all!** The same code automatically discovered the new HR tools because you updated the LlamaStack configuration.
+
+## Step 5.4: Try Some Queries in the Notebook
+
+Find the cell where you can enter your own question and try:
 
 ```python
-my_question = "What's the weather in London and list all employees in Engineering?"
+my_question = "What's the weather in London and who are the employees in Engineering?"
 ```
+
+Run that cell to see your AI use both tools!
 
 ---
 
-## 🧹 Cleanup (After Workshop)
+# 🎉 Congratulations!
+
+You've completed the LlamaStack Workshop!
+
+## What You Accomplished Today
+
+✅ Created your own AI project on OpenShift  
+✅ Deployed a real AI model (Llama 3.2)  
+✅ Added tools (MCP servers) to give your AI special abilities  
+✅ Used the Playground to chat with your AI  
+✅ Updated your AI's configuration to add new tools  
+✅ Ran notebooks to interact with your AI programmatically  
+✅ Learned how LlamaStack makes it easy to extend AI capabilities  
+
+---
+
+# 🧹 Cleanup (After the Workshop)
+
+When you're done, you can delete your project to free up resources.
+
+**In your terminal, run:**
 
 ```bash
-# Delete your project
 oc delete project user-XX
 ```
 
+(Replace `user-XX` with your actual user number)
+
+Type `y` and press Enter if asked to confirm.
+
 ---
 
-## 🔧 Troubleshooting
+# 🆘 Troubleshooting
 
-### Model Not Starting
+## "Command not found" error
 
+Make sure you're logged into OpenShift:
 ```bash
-# Check pod status
-oc get pods -n $NS | grep llama
-
-# Check events
-oc get events -n $NS --sort-by='.lastTimestamp' | tail -10
-
-# Check GPU availability
-oc describe node -l nvidia.com/gpu.present=true | grep -A5 "Allocated"
+oc whoami
 ```
 
-### Playground Not Working
+If it says "error", you need to log in again (see "Logging into OpenShift" at the beginning).
 
-```bash
-# Check LlamaStack pod
-oc get pods -n $NS | grep lsd-genai
+## Model stuck on "Pending"
 
-# Check logs
-oc logs deployment/lsd-genai-playground -n $NS --tail=30
-```
+This usually means GPUs are busy. Wait a few minutes, or ask the instructor.
 
-### MCP Server Not Responding
+## Playground not loading
 
-```bash
-# Check MCP pods
-oc get pods -n $NS | grep -E "weather|hr"
+1. Make sure your model shows "Running" status
+2. Try refreshing the browser page
+3. Wait 2-3 minutes after enabling Playground
 
-# Check MCP logs
-oc logs deployment/weather-mongodb-mcp -n $NS --tail=20
-oc logs deployment/hr-mcp-server -n $NS --tail=20
-```
+## Notebook connection error
 
-### Notebook Connection Error
-
-Make sure `PROJECT_NAME` matches your actual project name:
+Make sure you updated `PROJECT_NAME` to match your actual project:
 ```python
-PROJECT_NAME = "user-XX"  # Must match your oc project name exactly!
+PROJECT_NAME = "user-05"  # Use YOUR number!
 ```
+
+## "Permission denied" errors
+
+Make sure you're working in YOUR project:
+```bash
+oc project user-XX
+```
+
+## Still stuck?
+
+🙋 **Raise your hand!** The instructors are here to help.
 
 ---
 
-## 📚 Quick Reference
+# 📝 Quick Reference Card
 
-### Key URLs (Internal)
+## Your Info
+- **Project name:** `user-____`
+- **Namespace:** `user-____`
 
-| Service | URL |
-|---------|-----|
-| Weather MCP | `http://weather-mongodb-mcp:8000/mcp` |
-| HR MCP | `http://hr-mcp-server:8000/mcp` |
-| LlamaStack | `http://lsd-genai-playground-service:8321` |
-
-### Key Commands
+## Key Commands
 
 ```bash
-# Set namespace
+# Set your namespace (do this first!)
 export NS=user-XX
 
-# Check pods
+# Check your pods
 oc get pods -n $NS
 
-# Check MCP tools
+# Check available tools
 oc exec deployment/lsd-genai-playground -n $NS -- curl -s http://localhost:8321/v1/tools
-
-# Check models
-oc exec deployment/lsd-genai-playground -n $NS -- curl -s http://localhost:8321/v1/models
 
 # Restart LlamaStack
 oc delete pod -l app=lsd-genai-playground -n $NS
 
-# View LlamaStack config
-oc get configmap llama-stack-config -n $NS -o yaml
+# View logs if something is wrong
+oc logs deployment/lsd-genai-playground -n $NS --tail=50
 ```
 
----
+## Important URLs (for MCP registration)
 
-## ✅ Checklist
-
-- [ ] Created project `user-XX`
-- [ ] Created hardware profile with GPU
-- [ ] Deployed model (Running status)
-- [ ] Deployed Weather MCP
-- [ ] Deployed HR MCP
-- [ ] Registered both MCP endpoints
-- [ ] Enabled Playground
-- [ ] Tested Weather queries (Part 2)
-- [ ] Ran notebook first time (~3 tools)
-- [ ] Applied Phase 2 config
-- [ ] Tested HR queries (Part 3)
-- [ ] Watched admin Azure demo (Part 4)
-- [ ] Ran notebook second time (~8 tools)
+| Tool | URL |
+|------|-----|
+| Weather | `http://weather-mongodb-mcp:8000/mcp` |
+| HR | `http://hr-mcp-server:8000/mcp` |
 
 ---
 
-**🎉 Congratulations! You've completed the LlamaStack Workshop!**
+**Thank you for attending! 🙏**
