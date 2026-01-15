@@ -222,18 +222,36 @@ oc get pods -n user-XX | grep llama
 
 ---
 
-## 🎮 Part 2: Phase 1 - LlamaStack with Weather MCP (30 min)
+## 🎮 Part 2: Phase 1 - Deploy Weather MCP & Enable Playground (30 min)
 
-> **Goal:** Enable the Playground and test with a single MCP server (Weather)
+> **Goal:** Deploy Weather MCP server in your project and enable the Playground
 
-### Step 2.1: Enable Playground
+### Step 2.1: Deploy Weather MCP Server
+
+Each user deploys their own MCP server in their project:
+
+```bash
+# Deploy Weather MCP (MongoDB + MCP Server)
+oc apply -f manifests/mcp-servers/weather-mongodb/deploy-weather-mongodb.yaml -n user-XX
+
+# Wait for MongoDB to be ready
+oc wait --for=condition=available deployment/mongodb -n user-XX --timeout=120s
+
+# Wait for data initialization
+oc wait --for=condition=complete job/init-weather-data -n user-XX --timeout=120s
+
+# Wait for MCP server to be ready
+oc wait --for=condition=available deployment/weather-mongodb-mcp -n user-XX --timeout=180s
+```
+
+### Step 2.2: Enable Playground
 
 1. Go to **AI Asset Endpoints** in your project
 2. Find your deployed model `llama-32-3b-instruct`
 3. Click **Add to Playground**
 4. Wait for the LlamaStack Distribution to be created (~2 min)
 
-### Step 2.2: Access the Playground
+### Step 2.3: Access the Playground
 
 1. Navigate to **GenAI Studio** → **Playground**
 2. Select your model from the dropdown
@@ -243,15 +261,7 @@ oc get pods -n user-XX | grep llama
 What is the capital of France? Answer in one sentence.
 ```
 
-### Step 2.3: Register Weather MCP Server
-
-The admin has pre-deployed a shared Weather MCP server. Let's add it:
-
-1. Go to **Settings** → **AI asset endpoints**
-2. The Weather MCP server should be visible
-3. Click the 🔒 icon to "Login" (even without auth, this activates it)
-
-### Step 2.4: Test MCP Integration
+### Step 2.4: Test Weather MCP Integration
 
 In the Playground, try:
 
@@ -260,8 +270,17 @@ What is the weather in New York City?
 ```
 
 You should see:
-- The agent calls the `getforecast` tool
+- The agent calls the weather tool
 - Weather data is returned and summarized
+
+Try more queries:
+```
+List all available weather stations
+```
+
+```
+Compare the weather in Tokyo and London
+```
 
 ### Step 2.5: Check Current Configuration
 
@@ -288,27 +307,39 @@ MCP Servers: 1
 
 ---
 
-## 🔄 Part 3: Phase 2 - Iterate LlamaStack (Add More MCPs) (30 min)
+## 🔄 Part 3: Phase 2 - Iterate LlamaStack (Add HR MCP) (30 min)
 
-> **Goal:** Learn how to iterate your LlamaStack distribution by adding more MCP servers
+> **Goal:** Learn how to iterate your LlamaStack distribution by adding another MCP server
 
 This is the key learning: **LlamaStack configurations can be updated without code changes!**
 
-### Step 3.1: View Current LlamaStack Config
+### Step 3.1: Deploy HR MCP Server
+
+First, deploy the HR MCP server in your project:
+
+```bash
+# Deploy HR MCP server
+oc apply -f manifests/workshop/deploy-hr-mcp-simple.yaml -n user-XX
+
+# Wait for it to be ready
+oc wait --for=condition=available deployment/hr-mcp-server -n user-XX --timeout=180s
+```
+
+### Step 3.2: View Current LlamaStack Config
 
 ```bash
 # View the current LlamaStack configuration
-oc get configmap llama-stack-config -n user-XX -o yaml | grep -A30 "tool_groups:"
+oc get configmap llama-stack-config -n user-XX -o yaml | grep -A20 "tool_groups:"
 ```
 
 You should see only the Weather MCP in the `tool_groups` section.
 
-### Step 3.2: Apply Phase 2 Configuration
+### Step 3.3: Apply Phase 2 Configuration
 
-Now let's add more MCP servers (HR and Jira) to your LlamaStack:
+Now let's update LlamaStack to include the HR MCP server:
 
 ```bash
-# Apply the Phase 2 config (adds HR + Jira MCPs)
+# Apply the Phase 2 config (adds HR MCP)
 oc apply -f manifests/workshop/llama-stack-config-workshop-phase2.yaml -n user-XX
 
 # Restart LlamaStack to pick up the new config
@@ -319,10 +350,10 @@ echo "Waiting for LlamaStack to restart..."
 sleep 30
 ```
 
-### Step 3.3: Verify New Tools Are Available
+### Step 3.4: Verify New Tools Are Available
 
 ```bash
-# Check tools again (should now show 3 MCP servers)
+# Check tools again (should now show 2 MCP servers)
 oc exec deployment/lsd-genai-playground -n user-XX -- \
   curl -s http://localhost:8321/v1/tools | python3 -c "
 import json,sys
@@ -340,40 +371,50 @@ for tg,count in sorted(groups.items()):
 
 **Expected Output (Phase 2):**
 ```
-Total tools: 13
+Total tools: 8
   - builtin::rag: 2 tools
   - mcp::hr-tools: 5 tools
-  - mcp::jira-confluence: 5 tools
   - mcp::weather-data: 1 tools
 ```
 
-### Step 3.4: Test New MCP Servers in Playground
+### Step 3.5: Test HR MCP in Playground
 
 Go back to the **GenAI Studio Playground** and try:
 
-**HR MCP:**
+**List employees:**
 ```
 List all employees in the company
 ```
 
-**Jira MCP:**
+**Get employee info:**
 ```
-What are the open issues in the project?
+What is the vacation balance for employee EMP001?
 ```
 
-### Step 3.5: Key Takeaways
+**Job openings:**
+```
+What job openings are available?
+```
+
+**Create vacation request:**
+```
+Create a vacation request for EMP002 from 2026-02-10 to 2026-02-14
+```
+
+### Step 3.6: Key Takeaways
 
 | Phase 1 | Phase 2 |
 |---------|---------|
-| 1 MCP Server (Weather) | 3 MCP Servers (Weather + HR + Jira) |
-| 3 tools | 13 tools |
-| Basic weather queries | Weather + Employee + Project queries |
+| 1 MCP Server (Weather) | 2 MCP Servers (Weather + HR) |
+| 3 tools | 8 tools |
+| Weather queries only | Weather + Employee management |
 
 **What you learned:**
-1. ✅ LlamaStack configs are just YAML - easy to modify
-2. ✅ Adding MCP servers requires no code changes
-3. ✅ Just update ConfigMap and restart the pod
-4. ✅ New tools are automatically discovered by clients
+1. ✅ Deploy MCP servers as simple Kubernetes deployments
+2. ✅ LlamaStack configs are just YAML - easy to modify
+3. ✅ Adding MCP servers requires no code changes to your app
+4. ✅ Just update ConfigMap and restart the pod
+5. ✅ New tools are automatically discovered by clients
 
 ---
 
@@ -611,14 +652,16 @@ Phase 1 (Initial):                    Phase 2 (After Iteration):
 │ └─────────────────┘ │               │ └─────────────────┘ │
 │                     │               │                     │
 │ ┌─────────────────┐ │               │ ┌─────────────────┐ │
-│ │ LlamaStack      │ │    ──────►    │ │ LlamaStack      │ │
-│ │                 │ │   Update      │ │                 │ │
-│ │ MCP: Weather    │ │   ConfigMap   │ │ MCP: Weather    │ │
-│ │                 │ │               │ │ MCP: HR         │ │
-│ │ Tools: 3        │ │               │ │ MCP: Jira       │ │
-│ └─────────────────┘ │               │ │ Tools: 13       │ │
-└─────────────────────┘               │ └─────────────────┘ │
-                                      └─────────────────────┘
+│ │ Weather MCP     │ │               │ │ Weather MCP     │ │
+│ └─────────────────┘ │               │ └─────────────────┘ │
+│                     │               │ ┌─────────────────┐ │
+│                     │    ──────►    │ │ HR MCP (NEW!)   │ │
+│                     │   Deploy +    │ └─────────────────┘ │
+│ ┌─────────────────┐ │   Update      │ ┌─────────────────┐ │
+│ │ LlamaStack      │ │   ConfigMap   │ │ LlamaStack      │ │
+│ │ Tools: 3        │ │               │ │ Tools: 8        │ │
+│ └─────────────────┘ │               │ └─────────────────┘ │
+└─────────────────────┘               └─────────────────────┘
 ```
 
 ### Full Workshop Architecture
@@ -629,28 +672,20 @@ Phase 1 (Initial):                    Phase 2 (After Iteration):
 │                   (Admin: GPU nodes + RHOAI 3.0)                    │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐     │
-│  │    user-01      │  │    user-02      │  │    user-XX      │     │
-│  │  (User creates) │  │  (User creates) │  │  (User creates) │     │
-│  │                 │  │                 │  │                 │     │
-│  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │     │
-│  │ │ vLLM Model  │ │  │ │ vLLM Model  │ │  │ │ vLLM Model  │ │     │
-│  │ │ (1 GPU)     │ │  │ │ (1 GPU)     │ │  │ │ (1 GPU)     │ │     │
-│  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │     │
-│  │                 │  │                 │  │                 │     │
-│  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │     │
-│  │ │ LlamaStack  │ │  │ │ LlamaStack  │ │  │ │ LlamaStack  │ │     │
-│  │ │ Phase 1→2   │ │  │ │ Phase 1→2   │ │  │ │ Phase 1→2   │ │     │
-│  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │     │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘     │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                 workshop-shared (MCP Servers)                │   │
-│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐                │   │
-│  │  │ Weather   │  │ HR        │  │ Jira      │                │   │
-│  │  │ MCP       │  │ MCP       │  │ MCP       │                │   │
-│  │  └───────────┘  └───────────┘  └───────────┘                │   │
-│  └─────────────────────────────────────────────────────────────┘   │
+│  ┌───────────────────────────────────────────────────────────────┐ │
+│  │                    User Projects (x20)                         │ │
+│  │                                                                │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌───────────────┐  │ │
+│  │  │    user-01      │  │    user-02      │  │   user-XX     │  │ │
+│  │  │                 │  │                 │  │               │  │ │
+│  │  │ • vLLM (1 GPU)  │  │ • vLLM (1 GPU)  │  │ • vLLM (1 GPU)│  │ │
+│  │  │ • Weather MCP   │  │ • Weather MCP   │  │ • Weather MCP │  │ │
+│  │  │ • HR MCP        │  │ • HR MCP        │  │ • HR MCP      │  │ │
+│  │  │ • LlamaStack    │  │ • LlamaStack    │  │ • LlamaStack  │  │ │
+│  │  └─────────────────┘  └─────────────────┘  └───────────────┘  │ │
+│  │                                                                │ │
+│  │  Each user deploys everything in their own isolated project    │ │
+│  └───────────────────────────────────────────────────────────────┘ │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │                    Admin Namespace                           │   │
@@ -673,17 +708,15 @@ Phase 1 (Initial):                    Phase 2 (After Iteration):
 - [ ] GPU MachineSet created with 20+ GPUs available
 - [ ] RHOAI 3.0 installed with LlamaStack operator enabled
 - [ ] GenAI Studio enabled in OdhDashboardConfig
-- [ ] Shared MCP servers deployed in `workshop-shared` namespace:
-  - [ ] Weather MCP server
-  - [ ] HR MCP server
-  - [ ] Jira MCP server
 - [ ] Azure OpenAI secret created in admin namespace (for demo)
 - [ ] User accounts created with access to OpenShift AI dashboard
 - [ ] User number assignments ready (user-01 through user-20)
+- [ ] Workshop repo accessible (public GitHub or internal)
 
 ### Participant Checklist
 
 - [ ] OpenShift AI dashboard access confirmed
 - [ ] Assigned user number known (e.g., user-05)
 - [ ] Browser ready (Chrome/Firefox recommended)
+- [ ] Terminal access to run `oc` commands
 - [ ] Basic understanding of LLMs and APIs

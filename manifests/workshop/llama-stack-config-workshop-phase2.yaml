@@ -1,11 +1,11 @@
 # LlamaStack Configuration - Workshop Phase 2
-# Adds HR and Jira MCP servers to the existing Weather MCP
+# Adds HR MCP server to the existing Weather MCP
 #
 # This demonstrates how to iterate a LlamaStack distribution by adding more tools.
 # Users apply this config to see how easy it is to extend their AI agent's capabilities.
 #
-# Phase 1 (initial): vLLM + Weather MCP only
-# Phase 2 (this):    vLLM + Weather + HR + Jira MCPs
+# Phase 1 (initial): vLLM + Weather MCP only (3 tools)
+# Phase 2 (this):    vLLM + Weather + HR MCPs (8 tools)
 #
 # Usage:
 #   oc apply -f manifests/workshop/llama-stack-config-workshop-phase2.yaml -n user-XX
@@ -126,20 +126,13 @@ data:
     - toolgroup_id: mcp::weather-data
       provider_id: model-context-protocol
       mcp_endpoint:
-        uri: ${env.MCP_WEATHER_URL:=http://mcp-weather.workshop-shared.svc.cluster.local:80/sse}
+        uri: http://weather-mongodb-mcp:8000/mcp
     # ============================================
     # MCP Server 2: HR Tools (NEW in Phase 2!)
     # ============================================
     - toolgroup_id: mcp::hr-tools
       provider_id: model-context-protocol
       mcp_endpoint:
-        uri: ${env.MCP_HR_URL:=http://hr-mcp-server.workshop-shared.svc.cluster.local:8000/mcp}
-    # ============================================
-    # MCP Server 3: Jira/Confluence (NEW in Phase 2!)
-    # ============================================
-    - toolgroup_id: mcp::jira-confluence
-      provider_id: model-context-protocol
-      mcp_endpoint:
-        uri: ${env.MCP_JIRA_URL:=http://jira-mcp-server.workshop-shared.svc.cluster.local:8000/mcp}
+        uri: http://hr-mcp-server:8000/mcp
     server:
       port: 8321

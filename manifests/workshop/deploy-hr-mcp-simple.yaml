@@ -1,0 +1,266 @@
+# HR MCP Server - Simple All-in-One Deployment
+# No image build required - uses python:3.11-slim with inline code
+#
+# Deploy with:
+#   oc apply -f manifests/workshop/deploy-hr-mcp-simple.yaml -n <your-namespace>
+#
+# Tools provided:
+# - get_vacation_balance: Get vacation/sick leave balance
+# - list_employees: List all employees
+# - get_employee_info: Get employee details
+# - list_job_openings: List open positions
+# - create_vacation_request: Submit vacation request
+#
+---
+# HR Mock Data
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hr-mock-data
+  labels:
+    app: hr-mcp-server
+data:
+  data.json: |
+    {
+      "employees": [
+        {"id": "EMP001", "name": "Alice Johnson", "email": "alice@company.com", "department": "Engineering", "title": "Senior Developer", "manager_id": "EMP005", "hire_date": "2022-03-15", "vacation_balance": 15, "sick_leave_balance": 10},
+        {"id": "EMP002", "name": "Bob Smith", "email": "bob@company.com", "department": "Engineering", "title": "DevOps Engineer", "manager_id": "EMP005", "hire_date": "2021-07-01", "vacation_balance": 18, "sick_leave_balance": 8},
+        {"id": "EMP003", "name": "Carol Williams", "email": "carol@company.com", "department": "Product", "title": "Product Manager", "manager_id": "EMP006", "hire_date": "2023-01-10", "vacation_balance": 12, "sick_leave_balance": 10},
+        {"id": "EMP004", "name": "David Brown", "email": "david@company.com", "department": "Engineering", "title": "Junior Developer", "manager_id": "EMP001", "hire_date": "2024-06-01", "vacation_balance": 20, "sick_leave_balance": 10},
+        {"id": "EMP005", "name": "Eva Martinez", "email": "eva@company.com", "department": "Engineering", "title": "Engineering Manager", "manager_id": "EMP007", "hire_date": "2020-02-20", "vacation_balance": 10, "sick_leave_balance": 5},
+        {"id": "EMP006", "name": "Frank Chen", "email": "frank@company.com", "department": "Product", "title": "Director of Product", "manager_id": "EMP007", "hire_date": "2019-11-01", "vacation_balance": 8, "sick_leave_balance": 7},
+        {"id": "EMP007", "name": "Grace Lee", "email": "grace@company.com", "department": "Executive", "title": "CTO", "manager_id": null, "hire_date": "2018-01-15", "vacation_balance": 5, "sick_leave_balance": 10}
+      ],
+      "job_openings": [
+        {"id": "JOB001", "title": "Senior Backend Engineer", "department": "Engineering", "location": "Remote", "salary_range": "$120k-$160k", "status": "open", "posted_date": "2026-01-05"},
+        {"id": "JOB002", "title": "Product Designer", "department": "Product", "location": "New York", "salary_range": "$90k-$120k", "status": "open", "posted_date": "2026-01-08"},
+        {"id": "JOB003", "title": "DevOps Engineer", "department": "Engineering", "location": "Remote", "salary_range": "$110k-$140k", "status": "open", "posted_date": "2026-01-10"}
+      ],
+      "vacation_requests": [
+        {"id": "VAC001", "employee_id": "EMP001", "start_date": "2026-02-01", "end_date": "2026-02-05", "type": "annual", "days": 5, "status": "approved"},
+        {"id": "VAC002", "employee_id": "EMP003", "start_date": "2026-01-20", "end_date": "2026-01-22", "type": "sick", "days": 3, "status": "pending"}
+      ]
+    }
+---
+# HR MCP Server Code
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hr-mcp-code
+  labels:
+    app: hr-mcp-server
+data:
+  server.py: |
+    """
+    HR MCP Server - Employee Management Tools
+    """
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+    import json
+    import os
+    from datetime import datetime
+
+    SERVER_NAME = os.getenv("MCP_SERVER_NAME", "hr-tools")
+
+    transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    mcp = FastMCP(SERVER_NAME, transport_security=transport_security)
+
+    # Load mock data
+    with open('/data/data.json') as f:
+        data = json.load(f)
+
+    employees = {e['id']: e for e in data['employees']}
+    job_openings = data['job_openings']
+    vacation_requests = data['vacation_requests']
+
+    @mcp.tool()
+    async def list_employees(department: str = None) -> str:
+        """List all employees, optionally filtered by department.
+        
+        Args:
+            department: Optional filter (Engineering, Product, Executive)
+        """
+        results = list(employees.values())
+        if department:
+            results = [e for e in results if e['department'].lower() == department.lower()]
+        
+        output = f"👥 Employee Directory ({len(results)} employees)\n"
+        output += "=" * 50 + "\n\n"
+        for emp in results:
+            output += f"• {emp['name']} ({emp['id']})\n"
+            output += f"  {emp['title']} | {emp['department']}\n"
+            output += f"  📧 {emp['email']}\n\n"
+        return output
+
+    @mcp.tool()
+    async def get_employee_info(employee_id: str) -> str:
+        """Get detailed information about an employee.
+        
+        Args:
+            employee_id: Employee ID (e.g., EMP001)
+        """
+        emp = employees.get(employee_id.upper())
+        if not emp:
+            return f"❌ Employee {employee_id} not found"
+        
+        return f"""👤 Employee Profile: {emp['name']}
+    ═══════════════════════════════════════
+    🆔 ID: {emp['id']}
+    📧 Email: {emp['email']}
+    🏢 Department: {emp['department']}
+    💼 Title: {emp['title']}
+    👔 Manager: {emp['manager_id'] or 'None'}
+    📅 Hire Date: {emp['hire_date']}
+    🏖️ Vacation Balance: {emp['vacation_balance']} days
+    🏥 Sick Leave: {emp['sick_leave_balance']} days
+    """
+
+    @mcp.tool()
+    async def get_vacation_balance(employee_id: str) -> str:
+        """Get vacation and sick leave balance for an employee.
+        
+        Args:
+            employee_id: Employee ID (e.g., EMP001)
+        """
+        emp = employees.get(employee_id.upper())
+        if not emp:
+            return f"❌ Employee {employee_id} not found"
+        
+        return f"""📊 Leave Balance for {emp['name']} ({employee_id})
+    ═══════════════════════════════════════
+    🏖️ Annual Leave: {emp['vacation_balance']} days
+    🏥 Sick Leave: {emp['sick_leave_balance']} days
+    """
+
+    @mcp.tool()
+    async def list_job_openings(status: str = "open") -> str:
+        """List current job openings.
+        
+        Args:
+            status: Filter by status (open, closed, all)
+        """
+        results = job_openings
+        if status != "all":
+            results = [j for j in results if j['status'] == status]
+        
+        output = f"💼 Job Openings ({len(results)} positions)\n"
+        output += "=" * 50 + "\n\n"
+        for job in results:
+            output += f"📌 {job['title']} ({job['id']})\n"
+            output += f"   🏢 {job['department']} | 📍 {job['location']}\n"
+            output += f"   💰 {job['salary_range']}\n"
+            output += f"   📅 Posted: {job['posted_date']}\n\n"
+        return output
+
+    @mcp.tool()
+    async def create_vacation_request(
+        employee_id: str,
+        start_date: str,
+        end_date: str,
+        leave_type: str = "annual",
+        days: int = 1
+    ) -> str:
+        """Create a vacation request.
+        
+        Args:
+            employee_id: Employee ID
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+            leave_type: Type (annual, sick, personal)
+            days: Number of days
+        """
+        emp = employees.get(employee_id.upper())
+        if not emp:
+            return f"❌ Employee {employee_id} not found"
+        
+        req_id = f"VAC{len(vacation_requests)+1:03d}"
+        return f"""✅ Vacation Request Created!
+    ═══════════════════════════════════════
+    📋 Request ID: {req_id}
+    👤 Employee: {emp['name']} ({employee_id})
+    📅 Dates: {start_date} to {end_date}
+    📝 Type: {leave_type}
+    📊 Days: {days}
+    🔄 Status: Pending
+    """
+
+    if __name__ == "__main__":
+        import uvicorn
+        print(f"🚀 Starting HR MCP Server: {SERVER_NAME}")
+        app = mcp.streamable_http_app()
+        uvicorn.run(app, host='0.0.0.0', port=8000)
+---
+# HR MCP Server Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hr-mcp-server
+  labels:
+    app: hr-mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hr-mcp-server
+  template:
+    metadata:
+      labels:
+        app: hr-mcp-server
+    spec:
+      containers:
+      - name: hr-mcp-server
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          pip install --quiet mcp uvicorn
+          python /app/server.py
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: MCP_SERVER_NAME
+          value: "hr-tools"
+        volumeMounts:
+        - name: code
+          mountPath: /app
+        - name: data
+          mountPath: /data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 45
+          periodSeconds: 10
+      volumes:
+      - name: code
+        configMap:
+          name: hr-mcp-code
+      - name: data
+        configMap:
+          name: hr-mock-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hr-mcp-server
+  labels:
+    app: hr-mcp-server
+spec:
+  selector:
+    app: hr-mcp-server
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
