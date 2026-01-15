@@ -70,19 +70,24 @@ You should see the **OpenShift AI Dashboard** with a menu on the left side.
 
 A "project" is your own workspace where you'll deploy your AI model.
 
-1. **Click** on **"Projects"** in the left menu
-2. **Click** the blue **"Create project"** button (top right)
-3. **Fill in the form:**
+> ⚠️ **Important:** Make sure you're in the **OpenShift AI Dashboard** (not the OpenShift Console) when creating your project!
+
+1. **Make sure** you're in the **OpenShift AI Dashboard** (the URL should contain `rhods` or `data-science`)
+2. **Click** on **"Projects"** in the left menu
+3. **Click** the blue **"Create project"** button (top right)
+4. **Fill in the form:**
 
    | Field | What to Enter |
    |-------|---------------|
    | **Name** | `user-XX` (use your number!) |
    | **Description** | `My workshop project` |
 
-4. **Click** the **"Create"** button
+5. **Click** the **"Create"** button
 
 
 ✅ **Success!** You should now see your project `user-XX` in the list.
+
+> 💡 **Why OpenShift AI Dashboard?** Projects created here automatically get the right labels to work with AI features. If you create a project in the OpenShift Console instead, it won't show up in OpenShift AI.
 
 
 ---
