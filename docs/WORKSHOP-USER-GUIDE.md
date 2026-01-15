@@ -47,17 +47,9 @@ The Web Terminal is built into OpenShift - you don't need to install anything on
 3. **Click** the **terminal icon** `>_` in the top-right corner of the page (next to the help icon)
 4. **Wait** a few seconds for the terminal to start
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-0.1-web-terminal-icon.png`
-> - Show: OpenShift Console header with terminal icon highlighted
-> - Highlight: The `>_` terminal icon in the top-right
-> - Size: Header area only
 
 5. You should see a terminal window appear at the bottom of your screen
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-0.2-web-terminal-open.png`
-> - Show: OpenShift Console with Web Terminal open at the bottom
-> - Highlight: The terminal window
-> - Size: Full browser showing terminal panel
 
 ✅ **You're already logged in!** The Web Terminal is automatically connected to OpenShift, so you don't need to run any login commands.
 
@@ -77,10 +69,6 @@ The Web Terminal is built into OpenShift - you don't need to install anything on
 
 You should see the **OpenShift AI Dashboard** with a menu on the left side.
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.1-dashboard-home.png`
-> - Show: OpenShift AI Dashboard home page after login
-> - Highlight: Left menu showing "Data Science Projects", "Settings", etc.
-> - Size: Full browser window
 
 ---
 
@@ -99,17 +87,9 @@ A "project" is your own workspace where you'll deploy your AI model.
 
 4. **Click** the **"Create"** button
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.2a-create-project-form.png`
-> - Show: "Create data science project" dialog/form
-> - Highlight: Name field filled with "user-01" as example
-> - Size: Dialog only (cropped)
 
 ✅ **Success!** You should now see your project `user-XX` in the list.
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.2b-project-created.png`
-> - Show: Data Science Projects list with newly created project
-> - Highlight: The new project in the list
-> - Size: Main content area
 
 ---
 
@@ -163,17 +143,9 @@ A "hardware profile" tells OpenShift what computer resources your AI model needs
 
 6. **Click** the **"Create"** button
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.3a-hardware-profile-form.png`
-> - Show: Hardware profile creation form
-> - Highlight: Name field, and the three resource identifiers (CPU, Memory, GPU)
-> - Size: Full form view
 
 ✅ **Success!** You should see `gpu-profile` in the hardware profiles list.
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.3b-hardware-profile-created.png`
-> - Show: Hardware profiles list with "gpu-profile" visible
-> - Highlight: The new gpu-profile entry
-> - Size: Main content area
 
 ---
 
@@ -203,17 +175,9 @@ A "model connection" tells OpenShift where to download the AI model from.
 
 7. **Click** the **"Create"** button
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.4a-connection-form.png`
-> - Show: Add connection form with URI type selected
-> - Highlight: Name field and URI field filled in
-> - Size: Dialog/form only
 
 ✅ **Success!** You should see `llama-32-3b-instruct` in your connections list.
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.4b-connection-created.png`
-> - Show: Connections tab with the new connection listed
-> - Highlight: The llama-32-3b-instruct connection
-> - Size: Main content area
 
 ---
 
@@ -238,15 +202,7 @@ Now let's deploy the actual AI model!
    - Set **Replicas** to `1`
    - ✅ Check the box **"Make deployed models available as AI assets"**
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.5a-deploy-model-form-top.png`
-> - Show: Top part of Deploy model form
-> - Highlight: Model name, Serving runtime dropdown, Hardware profile dropdown
-> - Size: Upper half of form
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.5b-deploy-model-form-bottom.png`
-> - Show: Bottom part of Deploy model form
-> - Highlight: "Make deployed models available as AI assets" checkbox (checked)
-> - Size: Lower half of form
 
 6. **Click** the **"Deploy"** button
 
@@ -277,10 +233,6 @@ Now we need to enable **tool calling** so the model can use MCP servers. This is
 
    > ⚠️ **Important:** Each argument must be on its own line!
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.6-advanced-settings.png`
-> - Show: Advanced settings page with all checkboxes and custom runtime arguments filled in
-> - Highlight: The "Add custom runtime arguments" checkbox and text box with the three arguments
-> - Size: Full form view
 
 5. **Click** the **"Deploy"** button
 
@@ -305,15 +257,7 @@ The model needs a few minutes to download and start up.
 
 > ⏱️ **This takes about 3-5 minutes.** Feel free to stretch or grab water!
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.7a-model-pending.png`
-> - Show: Deployments list with model in "Pending" or "Progressing" status
-> - Highlight: Status indicator (yellow/blue)
-> - Size: Main content area
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.7b-model-running.png`
-> - Show: Deployments list with model in "Running" status (green)
-> - Highlight: Green status indicator
-> - Size: Main content area
 
 ✅ **Success!** Your AI model is now running with tool calling enabled!
 
@@ -430,10 +374,6 @@ You should see several pods running:
 - `hr-mcp-server-xxxxx` - HR MCP server
 - `llama-32-3b-instruct-predictor-xxxxx` - Your AI model
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.6-pods-running.png`
-> - Show: Pod list showing all running pods (model + MCP servers)
-> - Highlight: The MCP server pods
-> - Size: Main content area
 
 ---
 
@@ -457,10 +397,6 @@ oc apply -f manifests/workshop/gen-ai-aa-mcp-servers-workshop.yaml
 3. **Click** on **"AI asset endpoints"**
 4. You should see **Weather-MCP-Server** and **HR-MCP-Server** in the list
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.7-ai-asset-endpoints.png`
-> - Show: Settings → AI asset endpoints page
-> - Highlight: Weather-MCP-Server and HR-MCP-Server entries
-> - Size: Main content area
 
 ---
 
@@ -476,15 +412,7 @@ The "Playground" is a chat interface where you can talk to your AI. When you ena
 
 > 💡 You might see a loading indicator. Just wait for it to finish.
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.8a-add-to-playground-button.png`
-> - Show: AI Asset Endpoints page with model listed
-> - Highlight: "Add to Playground" button next to the model
-> - Size: Row containing the model
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.8b-playground-creating.png`
-> - Show: Loading/creating indicator for Playground
-> - Highlight: Progress indicator
-> - Size: Relevant portion of screen
 
 ---
 
@@ -556,15 +484,7 @@ The "Playground" is a chat interface where you can talk to your AI.
 
 > 💡 You might see a loading indicator. Just wait for it to finish.
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.8a-add-to-playground-button.png`
-> - Show: AI Asset Endpoints page with model listed
-> - Highlight: "Add to Playground" button next to the model
-> - Size: Row containing the model
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.8b-playground-creating.png`
-> - Show: Loading/creating indicator for Playground
-> - Highlight: Progress indicator
-> - Size: Relevant portion of screen
 
 ---
 
@@ -603,20 +523,8 @@ List all available weather stations
 What's the weather in Tokyo?
 ```
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.9a-playground-interface.png`
-> - Show: GenAI Studio Playground chat interface
-> - Highlight: Model selector dropdown, chat input box
-> - Size: Full Playground view
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.9b-playground-simple-response.png`
-> - Show: Playground with "What is the capital of France?" and response
-> - Highlight: The AI's response
-> - Size: Chat area
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.9c-playground-weather-tool.png`
-> - Show: Playground with weather query and response showing tool usage
-> - Highlight: Tool call indicator (if visible) and weather data in response
-> - Size: Chat area
 
 ---
 
@@ -667,15 +575,7 @@ A "notebook" is an interactive document where you can run code. Let's try it!
 6. **Wait** for the status to show **"Running"** (1-2 minutes)
 7. **Click** the **"Open"** link to launch JupyterLab
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.11a-create-workbench.png`
-> - Show: Create workbench form
-> - Highlight: Name field, Image selector, Container size
-> - Size: Form view
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.11b-workbench-running.png`
-> - Show: Workbenches list with workbench in "Running" status
-> - Highlight: "Open" link
-> - Size: Main content area
 
 ### Get the Workshop Notebook:
 
@@ -690,15 +590,7 @@ A "notebook" is an interactive document where you can run code. Let's try it!
     `llamastack-demo` → `notebooks` → `workshop_client_demo.ipynb`
 13. **Double-click** to open it
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.11c-jupyterlab-git-clone.png`
-> - Show: JupyterLab with Git > Clone a Repository dialog
-> - Highlight: URL input field
-> - Size: Dialog and part of JupyterLab
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.11d-jupyterlab-file-browser.png`
-> - Show: JupyterLab file browser showing llamastack-demo/notebooks folder
-> - Highlight: workshop_client_demo.ipynb file
-> - Size: Left sidebar file browser
 
 ### Run the Notebook:
 
@@ -710,15 +602,7 @@ A "notebook" is an interactive document where you can run code. Let's try it!
 - 1 LLM model available
 - About 3 MCP tools (Weather only)
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.11e-notebook-project-name.png`
-> - Show: Notebook cell with PROJECT_NAME variable
-> - Highlight: The cell where user changes "user-XX" to their number
-> - Size: Single cell
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.11f-notebook-output-phase1.png`
-> - Show: Notebook output showing models and tools (Phase 1)
-> - Highlight: "LLM Models: 1" and "MCP Tools: 3" (or similar)
-> - Size: Output cells showing results
 
 ✅ **Success!** You've completed Part 2!
 
@@ -872,20 +756,8 @@ What's the weather in Tokyo, and how many vacation days does Alice Johnson have?
 
 🎉 **Your AI is now using BOTH the weather AND HR tools!**
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-3.5a-playground-hr-employees.png`
-> - Show: Playground with "List all employees" query and response
-> - Highlight: Employee list in the response
-> - Size: Chat area
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-3.5b-playground-hr-vacation.png`
-> - Show: Playground with vacation balance query and response
-> - Highlight: Vacation balance information
-> - Size: Chat area
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-3.5c-playground-combined-query.png`
-> - Show: Playground with combined weather+HR query
-> - Highlight: Response showing both weather AND HR data
-> - Size: Chat area (this is a key screenshot!)
 
 ---
 
@@ -939,10 +811,6 @@ Remember the notebook you ran in Part 2? Let's run it again and see the differen
 
 🎯 **The notebook code didn't change at all!** The same code automatically discovered the new HR tools because you updated the LlamaStack configuration.
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-5.3-notebook-output-phase2.png`
-> - Show: Notebook output showing models and tools (Phase 2)
-> - Highlight: "MCP Tools: 8" (or similar) - MORE than Phase 1!
-> - Size: Output cells showing results
 > - Note: This should be visually comparable to screenshot-2.11f to show the difference
 
 ## Step 5.4: Try Some Queries in the Notebook
@@ -1065,91 +933,3 @@ oc logs deployment/lsd-genai-playground -n $NS --tail=50
 ---
 
 **Thank you for attending! 🙏**
-
----
-
-# 📸 Screenshot Checklist for Instructors
-
-Use this checklist to capture all required screenshots before the workshop.
-
-## Part 1: Create Project & Deploy Model
-
-| # | Filename | What to Capture |
-|---|----------|-----------------|
-| 1 | `screenshot-1.1-dashboard-home.png` | OpenShift AI Dashboard home page after login |
-| 2 | `screenshot-1.2a-create-project-form.png` | "Create data science project" dialog with name filled |
-| 3 | `screenshot-1.2b-project-created.png` | Data Science Projects list showing new project |
-| 4 | `screenshot-1.3a-hardware-profile-form.png` | Hardware profile form with CPU/Memory/GPU identifiers |
-| 5 | `screenshot-1.3b-hardware-profile-created.png` | Hardware profiles list showing gpu-profile |
-| 6 | `screenshot-1.4a-connection-form.png` | Add connection form (URI type) with fields filled |
-| 7 | `screenshot-1.4b-connection-created.png` | Connections tab showing the model connection |
-| 8 | `screenshot-1.5a-deploy-model-form-top.png` | Deploy model form - top (name, runtime, hardware) |
-| 9 | `screenshot-1.5b-deploy-model-form-bottom.png` | Deploy model form - bottom (AI assets checkbox) |
-| 10 | `screenshot-1.6a-model-pending.png` | Models list with Pending/Progressing status |
-| 11 | `screenshot-1.6b-model-running.png` | Models list with Running status (green) |
-
-## Part 2: Deploy MCPs & Enable Playground
-
-| # | Filename | What to Capture |
-|---|----------|-----------------|
-| 12 | `screenshot-2.7a-add-to-playground-button.png` | Model row with "Add to Playground" button |
-| 13 | `screenshot-2.7b-playground-creating.png` | Playground creation progress indicator |
-| 14 | `screenshot-2.9a-playground-interface.png` | GenAI Studio Playground - full interface |
-| 15 | `screenshot-2.9b-playground-simple-response.png` | Playground with simple Q&A (capital of France) |
-| 16 | `screenshot-2.9c-playground-weather-tool.png` | Playground showing weather tool in action |
-| 17 | `screenshot-2.11a-create-workbench.png` | Create workbench form |
-| 18 | `screenshot-2.11b-workbench-running.png` | Workbenches list with "Open" link |
-| 19 | `screenshot-2.11c-jupyterlab-git-clone.png` | JupyterLab Git clone dialog |
-| 20 | `screenshot-2.11d-jupyterlab-file-browser.png` | JupyterLab file browser showing notebook |
-| 21 | `screenshot-2.11e-notebook-project-name.png` | Notebook cell with PROJECT_NAME variable |
-| 22 | `screenshot-2.11f-notebook-output-phase1.png` | Notebook output - Phase 1 (~3 tools) |
-
-## Part 3: Add HR MCP to LlamaStack
-
-| # | Filename | What to Capture |
-|---|----------|-----------------|
-| 23 | `screenshot-3.5a-playground-hr-employees.png` | Playground with employee list response |
-| 24 | `screenshot-3.5b-playground-hr-vacation.png` | Playground with vacation balance response |
-| 25 | `screenshot-3.5c-playground-combined-query.png` | Playground with combined weather+HR query ⭐ |
-
-## Part 5: Re-run Notebook
-
-| # | Filename | What to Capture |
-|---|----------|-----------------|
-| 26 | `screenshot-5.3-notebook-output-phase2.png` | Notebook output - Phase 2 (~8 tools) |
-
----
-
-## Screenshot Tips
-
-1. **Use a clean browser** - No bookmarks bar, minimal extensions visible
-2. **Consistent window size** - Use same browser window size for all screenshots
-3. **Highlight important areas** - Use red boxes/arrows to draw attention
-4. **Crop appropriately** - Remove unnecessary whitespace but keep context
-5. **Use example data** - Use `user-01` as the example user in screenshots
-6. **High resolution** - Capture at 2x resolution if possible for clarity
-
-## Recommended Tools
-
-- **Mac:** Built-in Screenshot (Cmd+Shift+4) or CleanShot X
-- **Windows:** Snipping Tool or ShareX
-- **Annotation:** Skitch, Markup Hero, or built-in Preview (Mac)
-
----
-
-## Folder Structure for Screenshots
-
-```
-docs/
-├── WORKSHOP-USER-GUIDE.md
-└── images/
-    ├── screenshot-1.1-dashboard-home.png
-    ├── screenshot-1.2a-create-project-form.png
-    ├── screenshot-1.2b-project-created.png
-    └── ... (all other screenshots)
-```
-
-After capturing screenshots, update this guide to reference them:
-```markdown
-![Dashboard Home](images/screenshot-1.1-dashboard-home.png)
-```
