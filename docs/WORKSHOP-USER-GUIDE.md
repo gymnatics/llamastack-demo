@@ -51,48 +51,55 @@ Your instructor will give you:
 
 # Part 1: Create Your Project & Deploy a Model (45 min)
 
-## Step 1.1: Log into OpenShift AI Dashboard
+## Step 1.1: Log into OpenShift
 
 1. **Open** your web browser (Chrome or Firefox recommended)
 2. **Go to** the URL your instructor provided
-3. **Click** on the login option (e.g., "htpasswd" or "Local Authentication")
+3. **Select** **"workshop-users"** as the login option
 4. **Enter** your username and password
 5. **Click** "Log in"
 
-You should see the **OpenShift AI Dashboard** with a menu on the left side.
+You should now see the **OpenShift Console**.
 
 > ❓ **Can't log in?** Double-check your username and password. Ask your instructor if you're still stuck.
+
+---
+
+## Step 1.2: Navigate to OpenShift AI
+
+Now let's go to the OpenShift AI Dashboard where we'll do most of our work.
+
+1. **Look at** the top-right corner of the page
+2. **Click** the **grid icon** (⊞) - it's a 3x3 grid of squares
+3. **Click** **"OpenShift AI"** from the dropdown menu
+
+You should now see the **OpenShift AI Dashboard** with a menu on the left side showing "Projects", "AI hub", "Gen AI studio", etc.
+
+> 💡 **Tip:** You can always get back to OpenShift AI by clicking the grid icon and selecting "OpenShift AI".
 
 
 ---
 
-## Step 1.2: Create Your Project
+## Step 1.3: Create Your Project
 
 A "project" is your own workspace where you'll deploy your AI model.
 
-> ⚠️ **Important:** Make sure you're in the **OpenShift AI Dashboard** (not the OpenShift Console) when creating your project!
-
-1. **Make sure** you're in the **OpenShift AI Dashboard** (the URL should contain `rhods` or `data-science`)
-2. **Click** on **"Projects"** in the left menu
-3. **Click** the blue **"Create project"** button (top right)
-4. **Fill in the form:**
+1. **Click** on **"Projects"** in the left menu
+2. **Click** the blue **"Create project"** button (top right)
+3. **Fill in the form:**
 
    | Field | What to Enter |
    |-------|---------------|
    | **Name** | `user-XX` (use your number!) |
    | **Description** | `My workshop project` |
 
-5. **Click** the **"Create"** button
-
+4. **Click** the **"Create"** button
 
 ✅ **Success!** You should now see your project `user-XX` in the list.
 
-> 💡 **Why OpenShift AI Dashboard?** Projects created here automatically get the right labels to work with AI features. If you create a project in the OpenShift Console instead, it won't show up in OpenShift AI.
-
-
 ---
 
-## Step 1.3: Understanding Hardware Profiles (Admin Demo)
+## Step 1.4: Understanding Hardware Profiles (Admin Demo)
 
 > 🎓 **This is a demo by your instructor** - you don't need to do anything here, just watch and learn!
 
@@ -111,7 +118,7 @@ A "hardware profile" tells OpenShift what computer resources your AI model needs
 
 ---
 
-## Step 1.4: Add Model Details
+## Step 1.5: Add Model Details
 
 A "model connection" tells OpenShift where to download the AI model from.
 
@@ -143,7 +150,7 @@ A "model connection" tells OpenShift where to download the AI model from.
 
 ---
 
-## Step 1.5: Add Model Deployment Details
+## Step 1.6: Add Model Deployment Details
 
 Now let's deploy the actual AI model!
 
@@ -170,7 +177,7 @@ Now let's deploy the actual AI model!
 
 ---
 
-## Step 1.6: Advanced Settings - Enable Tool Calling (Required for MCP!)
+## Step 1.7: Advanced Settings - Enable Tool Calling (Required for MCP!)
 
 Now we need to enable **tool calling** so the model can use MCP servers. This is done in the "Advanced settings" step of the deployment wizard.
 
@@ -205,7 +212,7 @@ Now we need to enable **tool calling** so the model can use MCP servers. This is
 
 ---
 
-## Step 1.7: Wait for Your Model to Start
+## Step 1.8: Wait for Your Model to Start
 
 The model needs a few minutes to download and start up.
 
