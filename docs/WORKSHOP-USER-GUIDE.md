@@ -411,66 +411,54 @@ When you see `✅ Weather tool ready!` and `✅ HR tool ready!`, you're good to 
 
 ---
 
-## Step 2.7: Enable the AI Playground
+## Step 2.7: Register MCP Servers in AI Asset Endpoints
+
+Before we can use MCP servers, they need to be registered in OpenShift AI. This is done by applying a ConfigMap to the `redhat-ods-applications` namespace.
+
+> 📝 **Note:** Your instructor may have already done this step for the whole cluster. Check with them first!
+
+**If MCP servers are NOT already registered, run this command:**
+
+```bash
+# Register MCP servers in AI Asset Endpoints (cluster-wide)
+oc apply -f manifests/workshop/gen-ai-aa-mcp-servers-workshop.yaml
+```
+
+**To verify MCP servers are registered:**
+
+1. **Go to** the OpenShift AI Dashboard
+2. **Click** on **"Settings"** in the left menu
+3. **Click** on **"AI asset endpoints"**
+4. You should see **Weather-MCP-Server** and **HR-MCP-Server** in the list
+
+> 📸 **SCREENSHOT NEEDED:** `screenshot-2.7-ai-asset-endpoints.png`
+> - Show: Settings → AI asset endpoints page
+> - Highlight: Weather-MCP-Server and HR-MCP-Server entries
+> - Size: Main content area
+
+---
+
+## Step 2.8: Enable the AI Playground
 
 The "Playground" is a chat interface where you can talk to your AI. When you enable it, a LlamaStack Distribution is created with your model.
 
-1. **Go back to your browser** (OpenShift AI Dashboard)
-2. Make sure you're in your project (`user-XX`)
-3. **Click** on **"AI Asset Endpoints"** in the left menu or project tabs
-4. **Find** your model `llama-32-3b-instruct` in the list
-5. **Click** the **"Add to Playground"** button next to it
-6. **Wait** about 2 minutes for the Playground to be created
+1. **Go to** your project in the OpenShift AI Dashboard
+2. **Click** on **"AI Asset Endpoints"** (in your project, not Settings)
+3. **Find** your model `llama-32-3b-instruct` in the list
+4. **Click** the **"Add to Playground"** button next to it
+5. **Wait** about 2 minutes for the Playground to be created
 
 > 💡 You might see a loading indicator. Just wait for it to finish.
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.7a-add-to-playground-button.png`
+> 📸 **SCREENSHOT NEEDED:** `screenshot-2.8a-add-to-playground-button.png`
 > - Show: AI Asset Endpoints page with model listed
 > - Highlight: "Add to Playground" button next to the model
 > - Size: Row containing the model
 
-> 📸 **SCREENSHOT NEEDED:** `screenshot-2.7b-playground-creating.png`
+> 📸 **SCREENSHOT NEEDED:** `screenshot-2.8b-playground-creating.png`
 > - Show: Loading/creating indicator for Playground
 > - Highlight: Progress indicator
 > - Size: Relevant portion of screen
-
----
-
-## Step 2.8: Add Weather MCP to LlamaStack Configuration
-
-Now we need to tell LlamaStack about the Weather MCP server. This is done by updating the LlamaStack configuration file (ConfigMap).
-
-**Go back to your terminal and run these commands:**
-
-```bash
-# First, let's see the current LlamaStack config
-oc get configmap llama-stack-config -n $NS -o yaml | head -50
-```
-
-You'll see a YAML configuration. Now let's apply a config that includes the Weather MCP:
-
-```bash
-# Apply the Phase 1 config (includes Weather MCP)
-oc apply -f manifests/workshop/llama-stack-config-workshop-phase1.yaml -n $NS
-```
-
-> ⚠️ **Note:** If this file doesn't exist yet, we'll create it in the next step.
-
-```bash
-# Restart LlamaStack to pick up the new config
-oc delete pod -l app=lsd-genai-playground -n $NS
-
-# Wait for it to restart
-echo "⏳ Waiting for LlamaStack to restart..."
-sleep 30
-oc wait --for=condition=available deployment/lsd-genai-playground -n $NS --timeout=120s
-echo "✅ LlamaStack restarted!"
-```
-
-> 📝 **What just happened?** 
-> - The ConfigMap tells LlamaStack which MCP servers to connect to
-> - We added the Weather MCP URL to the `tool_groups` section
-> - Restarting the pod makes LlamaStack read the new config
 
 ---
 

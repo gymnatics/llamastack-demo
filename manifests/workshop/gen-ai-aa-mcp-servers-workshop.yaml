@@ -1,0 +1,36 @@
+# AI Asset Endpoints - Workshop MCP Servers Registration
+# This ConfigMap registers MCP servers in the OpenShift AI "AI asset endpoints" UI
+#
+# Apply to: redhat-ods-applications namespace (cluster-wide)
+#
+# Usage:
+#   oc apply -f manifests/workshop/gen-ai-aa-mcp-servers-workshop.yaml
+#
+# NOTE: This registers the MCP servers so they appear in the UI.
+# Each user's LlamaStack config (llama-stack-config ConfigMap) determines
+# which MCPs are actually connected to their LlamaStack Distribution.
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gen-ai-aa-mcp-servers
+  namespace: redhat-ods-applications
+  labels:
+    app.kubernetes.io/part-of: llamastack-workshop
+data:
+  # Weather MCP - deployed in each user's namespace
+  # URL pattern: http://weather-mongodb-mcp.<namespace>.svc.cluster.local:8000/mcp
+  Weather-MCP-Server: |
+    {
+      "url": "http://weather-mongodb-mcp:8000/mcp",
+      "description": "Weather data MCP server backed by MongoDB. Tools: search_weather, get_current_weather, list_stations, get_statistics, health_check.",
+      "transport": "streamable-http"
+    }
+  # HR MCP - deployed in each user's namespace
+  # URL pattern: http://hr-mcp-server.<namespace>.svc.cluster.local:8000/mcp
+  HR-MCP-Server: |
+    {
+      "url": "http://hr-mcp-server:8000/mcp",
+      "description": "HR system MCP server for employee management. Tools: list_employees, get_employee_info, get_vacation_balance, list_job_openings, create_vacation_request.",
+      "transport": "streamable-http"
+    }

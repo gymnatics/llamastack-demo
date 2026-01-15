@@ -168,6 +168,19 @@ test_mcp_server "weather-mongodb-mcp" "8000" "Weather"
 test_mcp_server "hr-mcp-server" "8000" "HR"
 
 # ============================================================
+# STEP 3.5: Register MCP Servers in AI Asset Endpoints
+# ============================================================
+echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}STEP 3.5: Register MCP Servers in AI Asset Endpoints${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+echo -e "${YELLOW}📝 Registering MCP servers in AI Asset Endpoints (cluster-wide)...${NC}"
+oc apply -f "$REPO_ROOT/manifests/workshop/gen-ai-aa-mcp-servers-workshop.yaml"
+
+echo -e "${GREEN}✓ MCP servers registered in AI Asset Endpoints${NC}"
+echo -e "${YELLOW}   Check: Settings → AI asset endpoints in OpenShift AI Dashboard${NC}"
+
+# ============================================================
 # STEP 4: Manual Steps Required
 # ============================================================
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
