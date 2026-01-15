@@ -21,10 +21,10 @@
 |-------|----------|-----|-------------|
 | **Pre-Setup** | Before | Admin | GPU provisioning, RHOAI + LlamaStack installation |
 | **Part 1** | 45 min | Users | Create project, hardware profile, deploy model |
-| **Part 2** | 30 min | Users | Phase 1 - Enable Playground with Weather MCP |
-| **Part 3** | 30 min | Users | Phase 2 - Iterate LlamaStack config (add more MCPs) |
-| **Part 4** | 30 min | Admin | Azure OpenAI demo (admin only) |
-| **Part 5** | 30 min | Users | Client integration with notebooks |
+| **Part 2** | 30 min | Users | Deploy both MCPs → Enable Playground (Weather only) → Test → Run notebook |
+| **Part 3** | 30 min | Users | Update LlamaStack config to add HR MCP → Test new tools |
+| **Part 4** | 30 min | Admin | Azure OpenAI demo via notebook (Playground doesn't support external models) |
+| **Part 5** | 30 min | Users | Run full client notebook with all tools |
 | **Wrap-up** | 15 min | All | Q&A and cleanup |
 
 ---
@@ -222,17 +222,20 @@ oc get pods -n user-XX | grep llama
 
 ---
 
-## 🎮 Part 2: Phase 1 - Deploy Weather MCP & Enable Playground (30 min)
+## 🎮 Part 2: Deploy MCPs & Enable Playground (30 min)
 
-> **Goal:** Deploy Weather MCP server in your project and enable the Playground
+> **Goal:** Deploy both MCP servers, register them as endpoints, enable Playground with Weather only, test, and run notebook
 
-### Step 2.1: Deploy Weather MCP Server
+### Step 2.1: Deploy Both MCP Servers
 
-Each user deploys their own MCP server in their project:
+Deploy **both** MCP servers now (but only Weather will be active in LlamaStack initially):
 
 ```bash
 # Deploy Weather MCP (MongoDB + MCP Server)
 oc apply -f manifests/mcp-servers/weather-mongodb/deploy-weather-mongodb.yaml -n user-XX
+
+# Deploy HR MCP Server (for Part 3)
+oc apply -f manifests/workshop/deploy-hr-mcp-simple.yaml -n user-XX
 
 # Wait for MongoDB to be ready
 oc wait --for=condition=available deployment/mongodb -n user-XX --timeout=120s
@@ -240,18 +243,36 @@ oc wait --for=condition=available deployment/mongodb -n user-XX --timeout=120s
 # Wait for data initialization
 oc wait --for=condition=complete job/init-weather-data -n user-XX --timeout=120s
 
-# Wait for MCP server to be ready
+# Wait for both MCP servers to be ready
 oc wait --for=condition=available deployment/weather-mongodb-mcp -n user-XX --timeout=180s
+oc wait --for=condition=available deployment/hr-mcp-server -n user-XX --timeout=180s
 ```
 
-### Step 2.2: Enable Playground
+### Step 2.2: Register MCP Servers as AI Asset Endpoints
+
+Both MCP servers are now running. Let's register them as AI Asset Endpoints:
+
+1. Go to **AI Asset Endpoints** in your project
+2. Click **Add endpoint** → **MCP Server**
+3. Register Weather MCP:
+   - **Name:** `weather-mcp`
+   - **URL:** `http://weather-mongodb-mcp:8000/mcp`
+4. Register HR MCP:
+   - **Name:** `hr-mcp`
+   - **URL:** `http://hr-mcp-server:8000/mcp`
+
+> **Note:** Both endpoints are registered, but only Weather will be added to LlamaStack's toolgroup initially.
+
+### Step 2.3: Enable Playground
 
 1. Go to **AI Asset Endpoints** in your project
 2. Find your deployed model `llama-32-3b-instruct`
 3. Click **Add to Playground**
 4. Wait for the LlamaStack Distribution to be created (~2 min)
 
-### Step 2.3: Access the Playground
+> **Important:** The default LlamaStack config will only include the Weather MCP in its toolgroup. The HR MCP is deployed and registered but not yet connected to LlamaStack.
+
+### Step 2.4: Access the Playground
 
 1. Navigate to **GenAI Studio** → **Playground**
 2. Select your model from the dropdown
@@ -261,7 +282,7 @@ oc wait --for=condition=available deployment/weather-mongodb-mcp -n user-XX --ti
 What is the capital of France? Answer in one sentence.
 ```
 
-### Step 2.4: Test Weather MCP Integration
+### Step 2.5: Test Weather MCP Integration
 
 In the Playground, try:
 
@@ -282,7 +303,7 @@ List all available weather stations
 Compare the weather in Tokyo and London
 ```
 
-### Step 2.5: Check Current Configuration
+### Step 2.6: Check Current Configuration
 
 Let's see what tools are currently available:
 
@@ -294,52 +315,78 @@ import json,sys
 data=json.load(sys.stdin)
 tools=data if isinstance(data,list) else data.get('data',[])
 mcps=set(t.get('toolgroup_id','') for t in tools if t.get('toolgroup_id','').startswith('mcp::'))
-print(f'MCP Servers: {len(mcps)}')
+print(f'MCP Servers in LlamaStack: {len(mcps)}')
 for mcp in sorted(mcps):
     print(f'  - {mcp}')"
 ```
 
 **Expected Output (Phase 1):**
 ```
-MCP Servers: 1
+MCP Servers in LlamaStack: 1
   - mcp::weather-data
 ```
 
+> **Note:** HR MCP is deployed and registered as an endpoint, but not yet in LlamaStack's toolgroup!
+
+### Step 2.7: Run the Notebook (First Time)
+
+Now let's interact with LlamaStack programmatically using a notebook.
+
+1. **Create a Workbench** (if not already created):
+   - Go to **Workbenches** → **Create workbench**
+   - **Name:** `workshop-notebook`
+   - **Image:** Jupyter | Data Science | CPU | Python 3.12
+   - Click **Create** and wait for it to start
+
+2. **Clone the Workshop Repository:**
+   - Open the workbench (click **Open**)
+   - In JupyterLab, click **Git** → **Clone a Repository**
+   - Enter: `https://github.com/<org>/llamastack-demo.git`
+   - Click **Clone**
+
+3. **Open and Run the Notebook:**
+   - Navigate to `llamastack-demo/notebooks/workshop_client_demo.ipynb`
+   - Update `PROJECT_NAME = "user-XX"` with your user number
+   - Run all cells to see:
+     - Available models (should show 1 LLM)
+     - Available tools (should show Weather MCP tools only)
+     - Chat completion with Weather queries
+
 ---
 
-## 🔄 Part 3: Phase 2 - Iterate LlamaStack (Add HR MCP) (30 min)
+## 🔄 Part 3: Update LlamaStack Config (Add HR MCP) (30 min)
 
-> **Goal:** Learn how to iterate your LlamaStack distribution by adding another MCP server
+> **Goal:** Learn how to iterate your LlamaStack distribution by adding the HR MCP to the toolgroup
 
 This is the key learning: **LlamaStack configurations can be updated without code changes!**
 
-### Step 3.1: Deploy HR MCP Server
+The HR MCP server is already deployed and registered (from Part 2). Now we'll add it to LlamaStack's toolgroup so the AI agent can use it.
 
-First, deploy the HR MCP server in your project:
-
-```bash
-# Deploy HR MCP server
-oc apply -f manifests/workshop/deploy-hr-mcp-simple.yaml -n user-XX
-
-# Wait for it to be ready
-oc wait --for=condition=available deployment/hr-mcp-server -n user-XX --timeout=180s
-```
-
-### Step 3.2: View Current LlamaStack Config
+### Step 3.1: View Current LlamaStack Config
 
 ```bash
 # View the current LlamaStack configuration
 oc get configmap llama-stack-config -n user-XX -o yaml | grep -A20 "tool_groups:"
 ```
 
-You should see only the Weather MCP in the `tool_groups` section.
+You should see only the Weather MCP in the `tool_groups` section:
 
-### Step 3.3: Apply Phase 2 Configuration
+```yaml
+tool_groups:
+- toolgroup_id: builtin::rag
+  provider_id: rag-runtime
+- toolgroup_id: mcp::weather-data      # ← Only Weather MCP!
+  provider_id: model-context-protocol
+  mcp_endpoint:
+    uri: http://weather-mongodb-mcp:8000/mcp
+```
 
-Now let's update LlamaStack to include the HR MCP server:
+### Step 3.2: Apply Phase 2 Configuration
+
+Now let's update LlamaStack to include the HR MCP server in the toolgroup:
 
 ```bash
-# Apply the Phase 2 config (adds HR MCP)
+# Apply the Phase 2 config (adds HR MCP to toolgroup)
 oc apply -f manifests/workshop/llama-stack-config-workshop-phase2.yaml -n user-XX
 
 # Restart LlamaStack to pick up the new config
@@ -350,7 +397,23 @@ echo "Waiting for LlamaStack to restart..."
 sleep 30
 ```
 
-### Step 3.4: Verify New Tools Are Available
+The new config adds HR MCP to the toolgroup:
+
+```yaml
+tool_groups:
+- toolgroup_id: builtin::rag
+  provider_id: rag-runtime
+- toolgroup_id: mcp::weather-data      # ← Weather (same as before)
+  provider_id: model-context-protocol
+  mcp_endpoint:
+    uri: http://weather-mongodb-mcp:8000/mcp
+- toolgroup_id: mcp::hr-tools          # ← HR MCP (NEW!)
+  provider_id: model-context-protocol
+  mcp_endpoint:
+    uri: http://hr-mcp-server:8000/mcp
+```
+
+### Step 3.3: Verify New Tools Are Available
 
 ```bash
 # Check tools again (should now show 2 MCP servers)
@@ -377,7 +440,7 @@ Total tools: 8
   - mcp::weather-data: 1 tools
 ```
 
-### Step 3.5: Test HR MCP in Playground
+### Step 3.4: Test HR MCP in Playground
 
 Go back to the **GenAI Studio Playground** and try:
 
@@ -401,7 +464,12 @@ What job openings are available?
 Create a vacation request for EMP002 from 2026-02-10 to 2026-02-14
 ```
 
-### Step 3.6: Key Takeaways
+**Combined query (uses both MCPs!):**
+```
+What's the weather in New York and how many vacation days does Alice Johnson have?
+```
+
+### Step 3.5: Key Takeaways
 
 | Phase 1 | Phase 2 |
 |---------|---------|
@@ -426,12 +494,16 @@ Create a vacation request for EMP002 from 2026-02-10 to 2026-02-14
 
 You just learned how to add MCP servers. Now the admin will show you how to add a **second inference provider** (Azure OpenAI) - demonstrating that LlamaStack can abstract multiple LLM backends.
 
+> **Note:** The GenAI Studio Playground doesn't support external models yet, so the admin will demonstrate Azure OpenAI using a **notebook**.
+
 The admin will demonstrate:
 1. How to add Azure OpenAI as a second inference provider
-2. Switching between local vLLM and Azure OpenAI
+2. Switching between local vLLM and Azure OpenAI via notebook
 3. The power of LlamaStack's provider abstraction
 
 ### Admin Demo Steps
+
+**Step 1: Update LlamaStack Config**
 
 ```bash
 # 1. Show current config (1 model - vLLM only)
@@ -461,13 +533,48 @@ LLM Models: 2
   - gpt-4.1-mini (azure-openai)
 ```
 
+**Step 2: Demo via Notebook**
+
+Since the Playground doesn't support external models yet, the admin demonstrates using a notebook:
+
+```python
+# In admin's notebook - show switching between models
+import requests
+
+LLAMASTACK_URL = "http://lsd-genai-playground-service.<admin-namespace>.svc.cluster.local:8321"
+
+# List available models
+response = requests.get(f"{LLAMASTACK_URL}/v1/models")
+models = response.json().get("data", [])
+llm_models = [m for m in models if m.get("model_type") == "llm"]
+
+print("Available LLM Models:")
+for m in llm_models:
+    print(f"  - {m['identifier']} (provider: {m['provider_id']})")
+
+# Chat with local vLLM model
+response = requests.post(f"{LLAMASTACK_URL}/v1/inference/chat-completion", json={
+    "model_id": "llama-32-3b-instruct",  # Local vLLM
+    "messages": [{"role": "user", "content": "What is 2+2?"}]
+})
+print("\n[vLLM Response]:", response.json()["completion_message"]["content"]["text"])
+
+# Chat with Azure OpenAI model
+response = requests.post(f"{LLAMASTACK_URL}/v1/inference/chat-completion", json={
+    "model_id": "gpt-4.1-mini",  # Azure OpenAI
+    "messages": [{"role": "user", "content": "What is 2+2?"}]
+})
+print("\n[Azure Response]:", response.json()["completion_message"]["content"]["text"])
+```
+
 ### Key Takeaways for Participants
 
 | What You Did (Part 3) | What Admin Did (Part 4) |
 |-----------------------|-------------------------|
 | Added MCP servers (tools) | Added inference provider (model) |
-| Weather → Weather + HR + Jira | vLLM → vLLM + Azure OpenAI |
+| Weather → Weather + HR | vLLM → vLLM + Azure OpenAI |
 | No secrets needed | Requires Azure API keys |
+| Tested in Playground | Tested via Notebook (Playground limitation) |
 
 **The Pattern:**
 1. ✅ **No code changes needed** - just update the ConfigMap
@@ -477,72 +584,69 @@ LLM Models: 2
 
 ---
 
-## 📓 Part 5: Client Integration (30 min)
+## 📓 Part 5: Full Client Integration (30 min)
 
-> **Goal:** Use notebooks to interact with LlamaStack programmatically
+> **Goal:** Run the notebook again with all tools available and experiment
 
-### Step 5.1: Create a Workbench
+You already ran the notebook in Part 2 with Weather MCP only. Now let's run it again with **both MCPs** available!
 
-1. In your project, go to **Workbenches**
-2. Click **Create workbench**
-3. Configure:
-   - **Name:** `workshop-notebook`
-   - **Image:** Jupyter | Data Science | CPU | Python 3.12
-   - **Hardware profile:** (use default CPU profile)
-4. Click **Create**
+### Step 5.1: Re-run the Notebook
 
-### Step 5.2: Get the Demo Notebook
+1. Open your workbench (should still be running from Part 2)
+2. Navigate to `llamastack-demo/notebooks/workshop_client_demo.ipynb`
+3. **Restart the kernel** (Kernel → Restart Kernel) to clear previous state
+4. Run all cells again
 
-Once the workbench is running, click **Open** to launch JupyterLab.
+### Step 5.2: Compare Results
 
-**Option A: Clone the Git Repository (Recommended)**
+**Part 2 (Weather only):**
+```
+Available Tools:
+  - mcp::weather-data: 3 tools
+```
 
-1. In JupyterLab, click **Git** → **Clone a Repository**
-2. Enter the repository URL:
-   ```
-   https://github.com/<org>/llamastack-demo.git
-   ```
-3. Click **Clone**
-4. Navigate to `llamastack-demo/notebooks/workshop_client_demo.ipynb`
+**Part 5 (Weather + HR):**
+```
+Available Tools:
+  - mcp::weather-data: 3 tools
+  - mcp::hr-tools: 5 tools
+```
 
-**Option B: Download and Upload**
+### Step 5.3: Test Combined Queries
 
-1. Download the notebook from the workshop materials (provided by admin)
-2. In JupyterLab, click the **Upload** button (⬆️) in the file browser
-3. Select `workshop_client_demo.ipynb` from your computer
-4. Click **Open** to upload
+In the notebook, try queries that use both MCPs:
 
-**Option C: Create from Terminal**
+```python
+# Query that uses both Weather and HR MCPs
+response = requests.post(f"{LLAMASTACK_URL}/v1/inference/chat-completion", json={
+    "model_id": MODEL_ID,
+    "messages": [
+        {"role": "system", "content": "You are a helpful assistant with access to weather and HR tools."},
+        {"role": "user", "content": "What's the weather in Tokyo, and list all employees in the Engineering department"}
+    ]
+})
+print(response.json()["completion_message"]["content"]["text"])
+```
 
-1. In JupyterLab, open a **Terminal** (File → New → Terminal)
-2. Run:
-   ```bash
-   curl -O https://raw.githubusercontent.com/<org>/llamastack-demo/workshop-branch/notebooks/workshop_client_demo.ipynb
-   ```
-3. The notebook will appear in the file browser
-
-### Step 5.3: Open the Notebook
-
-1. Double-click `workshop_client_demo.ipynb` to open it
-2. **Important:** Update the `PROJECT_NAME` variable in the second cell to match your project:
-   ```python
-   PROJECT_NAME = "user-XX"  # Change XX to your number!
-   ```
-
-### Step 5.4: Run the Notebook
-
-The notebook demonstrates:
-1. Listing available models
-2. Listing MCP tools (you should now see all 3 MCP servers from Phase 2!)
-3. Making chat completions
-4. Using tool calling
-
-### Step 5.5: Experiment
+### Step 5.4: Experiment
 
 Try modifying the notebook to:
 - Ask different questions
 - Use different system prompts
+- Create vacation requests for employees
+- Compare weather across multiple cities
 - Explore the tool responses
+
+### Step 5.5: Key Learning
+
+The notebook code **didn't change** between Part 2 and Part 5 - only the LlamaStack configuration changed!
+
+```
+Part 2: LlamaStack config → Weather MCP only → 3 tools
+Part 5: LlamaStack config → Weather + HR MCPs → 8 tools
+```
+
+**Same client code, more capabilities** - this is the power of LlamaStack's abstraction layer.
 
 ---
 
@@ -642,7 +746,7 @@ oc describe node <gpu-node> | grep -A10 "Allocated resources"
 ### Phase 1 → Phase 2 Progression (User)
 
 ```
-Phase 1 (Initial):                    Phase 2 (After Iteration):
+Part 2 (Phase 1):                     Part 3 (Phase 2):
 ┌─────────────────────┐               ┌─────────────────────┐
 │     user-XX         │               │     user-XX         │
 │                     │               │                     │
@@ -652,16 +756,21 @@ Phase 1 (Initial):                    Phase 2 (After Iteration):
 │ └─────────────────┘ │               │ └─────────────────┘ │
 │                     │               │                     │
 │ ┌─────────────────┐ │               │ ┌─────────────────┐ │
-│ │ Weather MCP     │ │               │ │ Weather MCP     │ │
+│ │ Weather MCP ✓   │ │               │ │ Weather MCP ✓   │ │
 │ └─────────────────┘ │               │ └─────────────────┘ │
-│                     │               │ ┌─────────────────┐ │
-│                     │    ──────►    │ │ HR MCP (NEW!)   │ │
-│                     │   Deploy +    │ └─────────────────┘ │
-│ ┌─────────────────┐ │   Update      │ ┌─────────────────┐ │
-│ │ LlamaStack      │ │   ConfigMap   │ │ LlamaStack      │ │
-│ │ Tools: 3        │ │               │ │ Tools: 8        │ │
+│ ┌─────────────────┐ │               │ ┌─────────────────┐ │
+│ │ HR MCP (deploy- │ │    ──────►    │ │ HR MCP ✓        │ │
+│ │ ed but not in   │ │   Update      │ │ (now in tool-   │ │
+│ │ toolgroup yet)  │ │   ConfigMap   │ │ group!)         │ │
 │ └─────────────────┘ │               │ └─────────────────┘ │
-└─────────────────────┘               └─────────────────────┘
+│ ┌─────────────────┐ │               │ ┌─────────────────┐ │
+│ │ LlamaStack      │ │               │ │ LlamaStack      │ │
+│ │ Toolgroup:      │ │               │ │ Toolgroup:      │ │
+│ │  - Weather only │ │               │ │  - Weather      │ │
+│ │ Tools: 3        │ │               │ │  - HR           │ │
+│ └─────────────────┘ │               │ │ Tools: 8        │ │
+└─────────────────────┘               │ └─────────────────┘ │
+                                      └─────────────────────┘
 ```
 
 ### Full Workshop Architecture
