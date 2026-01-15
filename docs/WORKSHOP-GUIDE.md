@@ -450,13 +450,45 @@ LLM Models: 2
    - **Hardware profile:** (use default CPU profile)
 4. Click **Create**
 
-### Step 5.2: Upload the Demo Notebook
+### Step 5.2: Get the Demo Notebook
 
-1. Once the workbench is running, click **Open**
-2. Upload `notebooks/workshop_client_demo.ipynb`
-3. Open the notebook
+Once the workbench is running, click **Open** to launch JupyterLab.
 
-### Step 5.3: Run the Notebook
+**Option A: Clone the Git Repository (Recommended)**
+
+1. In JupyterLab, click **Git** → **Clone a Repository**
+2. Enter the repository URL:
+   ```
+   https://github.com/<org>/llamastack-demo.git
+   ```
+3. Click **Clone**
+4. Navigate to `llamastack-demo/notebooks/workshop_client_demo.ipynb`
+
+**Option B: Download and Upload**
+
+1. Download the notebook from the workshop materials (provided by admin)
+2. In JupyterLab, click the **Upload** button (⬆️) in the file browser
+3. Select `workshop_client_demo.ipynb` from your computer
+4. Click **Open** to upload
+
+**Option C: Create from Terminal**
+
+1. In JupyterLab, open a **Terminal** (File → New → Terminal)
+2. Run:
+   ```bash
+   curl -O https://raw.githubusercontent.com/<org>/llamastack-demo/workshop-branch/notebooks/workshop_client_demo.ipynb
+   ```
+3. The notebook will appear in the file browser
+
+### Step 5.3: Open the Notebook
+
+1. Double-click `workshop_client_demo.ipynb` to open it
+2. **Important:** Update the `PROJECT_NAME` variable in the second cell to match your project:
+   ```python
+   PROJECT_NAME = "user-XX"  # Change XX to your number!
+   ```
+
+### Step 5.4: Run the Notebook
 
 The notebook demonstrates:
 1. Listing available models
@@ -464,7 +496,7 @@ The notebook demonstrates:
 3. Making chat completions
 4. Using tool calling
 
-### Step 5.4: Experiment
+### Step 5.5: Experiment
 
 Try modifying the notebook to:
 - Ask different questions
