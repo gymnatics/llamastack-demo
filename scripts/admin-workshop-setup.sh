@@ -260,20 +260,33 @@ else
 fi
 
 # ============================================================
-# STEP 6: Apply Phase 1 Config (Weather MCP)
+# STEP 6: Patch Config to Add Weather MCP
 # ============================================================
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}STEP 6: Apply Phase 1 Config (Add Weather MCP to LlamaStack)${NC}"
+echo -e "${BLUE}STEP 6: Patch Config to Add Weather MCP to LlamaStack${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-echo -e "${YELLOW}📝 Applying Phase 1 LlamaStack config (Weather MCP)...${NC}"
-oc apply -f "$REPO_ROOT/manifests/workshop/llama-stack-config-workshop-phase1.yaml" -n $NAMESPACE
+echo -e "${YELLOW}📝 Getting current LlamaStack config...${NC}"
+oc get configmap llama-stack-config -n $NAMESPACE -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
+
+echo -e "${YELLOW}📝 Patching config to add Weather MCP...${NC}"
+cat /tmp/current-config.yaml | sed 's/tool_groups:/tool_groups:\
+- toolgroup_id: mcp::weather-data\
+  provider_id: model-context-protocol\
+  mcp_endpoint:\
+    uri: http:\/\/weather-mongodb-mcp:8000\/mcp/' > /tmp/patched-config.yaml
+
+echo -e "${YELLOW}📝 Applying patched config...${NC}"
+oc create configmap llama-stack-config \
+  --from-file=run.yaml=/tmp/patched-config.yaml \
+  -n $NAMESPACE \
+  --dry-run=client -o yaml | oc replace -f -
 
 echo -e "${YELLOW}🔄 Restarting LlamaStack to pick up new config...${NC}"
-oc delete pod -l app=lsd-genai-playground -n $NAMESPACE
+oc delete pod -l app=lsd-genai-playground -n $NAMESPACE 2>/dev/null || true
 
 echo -e "${YELLOW}⏳ Waiting for LlamaStack to restart...${NC}"
-sleep 10
+sleep 15
 wait_for_deployment "lsd-genai-playground" 120
 
 # Verify Weather tools
@@ -314,20 +327,33 @@ echo -e "${YELLOW}Press Enter to continue to Phase 2 setup...${NC}"
 read -r
 
 # ============================================================
-# STEP 8: Apply Phase 2 Config (Add HR to toolgroup)
+# STEP 8: Patch Config to Add HR MCP
 # ============================================================
 echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}STEP 8: Apply Phase 2 Config (Add HR MCP to toolgroup)${NC}"
+echo -e "${BLUE}STEP 8: Patch Config to Add HR MCP to toolgroup${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-echo -e "${YELLOW}📝 Applying Phase 2 LlamaStack config...${NC}"
-oc apply -f "$REPO_ROOT/manifests/workshop/llama-stack-config-workshop-phase2.yaml" -n $NAMESPACE
+echo -e "${YELLOW}📝 Getting current LlamaStack config...${NC}"
+oc get configmap llama-stack-config -n $NAMESPACE -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
+
+echo -e "${YELLOW}📝 Patching config to add HR MCP...${NC}"
+cat /tmp/current-config.yaml | sed 's/- toolgroup_id: builtin::rag/- toolgroup_id: mcp::hr-tools\
+  provider_id: model-context-protocol\
+  mcp_endpoint:\
+    uri: http:\/\/hr-mcp-server:8000\/mcp\
+- toolgroup_id: builtin::rag/' > /tmp/patched-config.yaml
+
+echo -e "${YELLOW}📝 Applying patched config...${NC}"
+oc create configmap llama-stack-config \
+  --from-file=run.yaml=/tmp/patched-config.yaml \
+  -n $NAMESPACE \
+  --dry-run=client -o yaml | oc replace -f -
 
 echo -e "${YELLOW}🔄 Restarting LlamaStack to pick up new config...${NC}"
-oc delete pod -l app=lsd-genai-playground -n $NAMESPACE
+oc delete pod -l app=lsd-genai-playground -n $NAMESPACE 2>/dev/null || true
 
 echo -e "${YELLOW}⏳ Waiting for LlamaStack to restart...${NC}"
-sleep 10
+sleep 15
 wait_for_deployment "lsd-genai-playground" 120
 
 # Verify new tools
