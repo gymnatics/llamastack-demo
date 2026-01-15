@@ -51,6 +51,36 @@ Users will learn to:
 
 ---
 
+### Quick Start: Admin Setup Script
+
+The easiest way to set up and test the workshop flow:
+
+```bash
+# Clone the repo
+git clone https://github.com/<org>/llamastack-demo.git
+cd llamastack-demo
+git checkout workshop-branch
+
+# Run the admin setup script
+./scripts/admin-workshop-setup.sh admin-workshop
+```
+
+The script will:
+1. ✅ Deploy Weather MCP server
+2. ✅ Deploy HR MCP server
+3. ✅ Test MCP servers are working
+4. ⏸️ Pause for you to deploy model manually (via UI)
+5. ✅ Verify LlamaStack is running
+6. ✅ Apply Phase 2 config and test
+
+> **Note:** The script does NOT deploy the model - you do this manually via the UI to simulate the user experience.
+
+---
+
+### Manual Admin Setup (Alternative)
+
+If you prefer to set up manually, follow these steps:
+
 ### Admin Step 1: Provision GPU Nodes
 
 Create a MachineSet with 20 GPUs (or enough for all participants). This is handled separately by the admin.
