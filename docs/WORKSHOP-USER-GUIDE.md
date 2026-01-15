@@ -35,39 +35,33 @@ For example, if you are **user 5**, then:
 ### What You Need
 
 1. **A web browser** (Chrome or Firefox recommended)
-2. **Access to OpenShift AI Dashboard** (your instructor will provide the URL)
-3. **OpenShift Web Terminal** (built into OpenShift - no installation needed!)
+2. **Your login credentials** (username and password from your instructor)
 
-### Opening the Web Terminal
+### Your Login Credentials
 
-The Web Terminal is built into OpenShift - you don't need to install anything on your computer!
+Your instructor will give you:
+- **Username:** `userXX` (e.g., `user01`, `user05`, `user12`)
+- **Password:** (provided by instructor)
 
-1. **Go to** the OpenShift Console (your instructor will provide the URL)
-2. **Log in** with your credentials
-3. **Click** the **terminal icon** `>_` in the top-right corner of the page (next to the help icon)
-4. **Wait** a few seconds for the terminal to start
-
-
-5. You should see a terminal window appear at the bottom of your screen
-
-
-✅ **You're already logged in!** The Web Terminal is automatically connected to OpenShift, so you don't need to run any login commands.
-
-> 💡 **Tip:** You can resize the terminal by dragging the top edge. You can also click the "expand" icon to make it full screen.
-
-> ❓ **Don't see the terminal icon?** Ask your instructor - the Web Terminal Operator may need to be enabled.
+**Write your credentials here:**
+- Username: `________`
+- Password: `________`
 
 ---
 
 # Part 1: Create Your Project & Deploy a Model (45 min)
 
-## Step 1.1: Open the OpenShift AI Dashboard
+## Step 1.1: Log into OpenShift AI Dashboard
 
-1. Open your web browser
-2. Go to the URL your instructor provided
-3. Log in with your credentials
+1. **Open** your web browser (Chrome or Firefox recommended)
+2. **Go to** the URL your instructor provided
+3. **Click** on the login option (e.g., "htpasswd" or "Local Authentication")
+4. **Enter** your username and password
+5. **Click** "Log in"
 
 You should see the **OpenShift AI Dashboard** with a menu on the left side.
+
+> ❓ **Can't log in?** Double-check your username and password. Ask your instructor if you're still stuck.
 
 
 ---
@@ -76,8 +70,8 @@ You should see the **OpenShift AI Dashboard** with a menu on the left side.
 
 A "project" is your own workspace where you'll deploy your AI model.
 
-1. **Click** on **"Data Science Projects"** in the left menu
-2. **Click** the blue **"Create data science project"** button (top right)
+1. **Click** on **"Projects"** in the left menu
+2. **Click** the blue **"Create project"** button (top right)
 3. **Fill in the form:**
 
    | Field | What to Enter |
@@ -269,10 +263,16 @@ Now we'll add "tools" that give your AI special abilities, like checking the wea
 
 ## Step 2.1: Open the Web Terminal
 
-If you closed the Web Terminal, open it again:
+We need to run some commands. OpenShift has a built-in terminal in your browser!
 
-1. **Click** the **terminal icon** `>_` in the top-right corner of the OpenShift Console
-2. **Wait** for the terminal to appear at the bottom of your screen
+1. **Look at** the top-right corner of the OpenShift Console
+2. **Click** the **terminal icon** `>_` (it looks like this: `>_`)
+3. **Wait** a few seconds for the terminal to start
+4. You should see a terminal window appear at the bottom of your screen
+
+> 💡 **Tip:** You can resize the terminal by dragging the top edge. You can also click the "expand" icon to make it full screen.
+
+> ❓ **Don't see the terminal icon?** Ask your instructor for help.
 
 ## Step 2.2: Download the Workshop Files
 
