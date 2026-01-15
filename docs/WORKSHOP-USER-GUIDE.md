@@ -184,139 +184,28 @@ A "hardware profile" tells OpenShift what computer resources your AI model needs
 
 ---
 
-## Step 1.4: Create a Model Connection
+## Step 1.4: Open Your Terminal & Download Workshop Files
 
-A "model connection" tells OpenShift where to download the AI model from.
+Before deploying the model, let's set up your terminal and download the workshop files.
 
-1. **Click** on **"Data Science Projects"** in the left menu
-2. **Click** on your project name (`user-XX`)
-3. **Click** on the **"Connections"** tab
-4. **Click** the **"Add connection"** button
-5. **Select** **"URI"** as the connection type
+### Opening Your Terminal
 
-6. **Fill in the form:**
+**On Mac:**
+1. Press `Cmd + Space` to open Spotlight
+2. Type `Terminal`
+3. Press `Enter`
 
-   | Field | What to Enter |
-   |-------|---------------|
-   | **Name** | `llama-3.2-3b-instruct` |
-   | **URI** | (copy the text below exactly) |
+**On Windows:**
+1. Press `Windows key`
+2. Type `cmd` or `PowerShell`
+3. Press `Enter`
 
-   ```
-   oci://quay.io/redhat-ai-services/modelcar-catalog:llama-3.2-3b-instruct
-   ```
+**On Linux:**
+1. Press `Ctrl + Alt + T`
 
-   > 💡 **Tip:** Triple-click the URI above to select it all, then copy and paste.
+### Set Up Your Workspace
 
-7. **Click** the **"Create"** button
-
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.4a-connection-form.png`
-> - Show: Add connection form with URI type selected
-> - Highlight: Name field and URI field filled in
-> - Size: Dialog/form only
-
-✅ **Success!** You should see `llama-3.2-3b-instruct` in your connections list.
-
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.4b-connection-created.png`
-> - Show: Connections tab with the new connection listed
-> - Highlight: The llama-3.2-3b-instruct connection
-> - Size: Main content area
-
----
-
-## Step 1.5: Deploy Your AI Model
-
-Now let's deploy the actual AI model!
-
-1. Make sure you're in your project (`user-XX`)
-2. **Click** on the **"Models"** tab
-3. **Click** the **"Deploy model"** button
-
-4. **Fill in the deployment form:**
-
-   | Field | What to Select/Enter |
-   |-------|---------------------|
-   | **Model name** | `llama-32-3b-instruct` |
-   | **Serving runtime** | `vLLM NVIDIA GPU ServingRuntime for KServe` |
-   | **Model framework** | `vLLM` |
-   | **Hardware profile** | Select `gpu-profile` (the one you created) |
-   | **Model connection** | Select `llama-3.2-3b-instruct` |
-
-5. **Scroll down** to find **"Model server configuration"**
-   - Set **Replicas** to `1`
-   - ✅ Check the box **"Make deployed models available as AI assets"**
-
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.5a-deploy-model-form-top.png`
-> - Show: Top part of Deploy model form
-> - Highlight: Model name, Serving runtime dropdown, Hardware profile dropdown
-> - Size: Upper half of form
-
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.5b-deploy-model-form-bottom.png`
-> - Show: Bottom part of Deploy model form
-> - Highlight: "Make deployed models available as AI assets" checkbox (checked)
-> - Size: Lower half of form
-
-6. **Click** the **"Deploy"** button
-
----
-
-## Step 1.6: Wait for Your Model to Start
-
-The model needs a few minutes to download and start up.
-
-1. You'll see your model in the list with a status indicator
-2. **Wait** for the status to change:
-   - 🟡 **Pending** → Model is being prepared
-   - 🔵 **Progressing** → Model is downloading/starting
-   - 🟢 **Running** → Model is ready! ✅
-
-> ⏱️ **This takes about 3-5 minutes.** Feel free to stretch or grab water!
-
-### How to Check if It's Ready (Optional)
-
-Open your terminal and run:
-
-```bash
-oc get pods -n user-XX | grep llama
-```
-
-> ⚠️ **Remember:** Replace `user-XX` with your actual user number!
-
-When it's ready, you'll see:
-```
-llama-32-3b-instruct-predictor-xxxxx   1/1   Running   0   2m
-```
-
-The `1/1` and `Running` mean it's working!
-
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.6a-model-pending.png`
-> - Show: Models list with model in "Pending" or "Progressing" status
-> - Highlight: Status indicator (yellow/blue)
-> - Size: Main content area
-
-> 📸 **SCREENSHOT NEEDED:** `screenshot-1.6b-model-running.png`
-> - Show: Models list with model in "Running" status (green)
-> - Highlight: Green status indicator
-> - Size: Main content area
-
-✅ **Success!** Your AI model is now running!
-
----
-
-# Part 2: Add AI Tools & Test the Playground (30 min)
-
-Now we'll add "tools" that give your AI special abilities, like checking the weather!
-
-## Step 2.1: Open Your Terminal
-
-We need to run some commands. Open your terminal (see "Opening Your Terminal" above if you need help).
-
----
-
-## Step 2.2: Set Up Your Workspace
-
-First, let's set a shortcut so you don't have to type your project name every time.
-
-**Copy and paste this command** (replace XX with your number):
+**Step 1: Set your namespace variable** (replace XX with your number):
 
 ```bash
 export NS=user-XX
@@ -329,27 +218,16 @@ export NS=user-05
 
 Press `Enter`. You won't see any output - that's normal!
 
----
-
-## Step 2.3: Download the Workshop Files
-
-Now let's download the files we need.
-
-**Copy and paste these commands one at a time:**
+**Step 2: Download the workshop files:**
 
 ```bash
-git clone https://github.com/<org>/llamastack-demo.git
+git clone https://github.com/gymnatics/llamastack-demo.git
 ```
 
 Press `Enter` and wait for it to finish.
 
 ```bash
 cd llamastack-demo
-```
-
-Press `Enter`.
-
-```bash
 git checkout workshop-branch
 ```
 
@@ -359,7 +237,144 @@ Press `Enter`.
 
 ---
 
-## Step 2.4: Deploy the Weather Tool
+## Step 1.5: Deploy Your AI Model
+
+Now let's deploy the actual AI model! We'll use a pre-configured YAML file that includes everything needed for **tool calling** (required for MCP servers to work).
+
+**Run this command in your terminal:**
+
+```bash
+oc apply -f manifests/workshop/deploy-model-workshop.yaml -n $NS
+```
+
+You should see output like:
+```
+secret/llama-32-3b-instruct created
+servingruntime.serving.kserve.io/llama-32-3b-instruct created
+inferenceservice.serving.kserve.io/llama-32-3b-instruct created
+```
+
+> 📝 **What does this YAML do?**
+> - Creates a **Secret** with the model download location (OCI registry)
+> - Creates a **ServingRuntime** with vLLM and **tool calling enabled** (required for MCP!)
+> - Creates an **InferenceService** that deploys the model with your GPU profile
+
+> 📸 **SCREENSHOT NEEDED:** `screenshot-1.5-terminal-deploy-model.png`
+> - Show: Terminal with the oc apply command and success output
+> - Highlight: The "created" messages
+> - Size: Terminal window
+
+---
+
+## Step 1.6: See Your Model in the Dashboard
+
+Now let's see what we just created in the OpenShift AI Dashboard!
+
+1. **Go to** the OpenShift AI Dashboard in your browser
+2. **Click** on **"Data Science Projects"** in the left menu
+3. **Click** on your project name (`user-XX`)
+4. **Click** on the **"Models"** tab
+
+You should see `llama-32-3b-instruct` in the list!
+
+> 📸 **SCREENSHOT NEEDED:** `screenshot-1.6a-models-tab.png`
+> - Show: Models tab in your project
+> - Highlight: The llama-32-3b-instruct model entry
+> - Size: Main content area
+
+### Also check the Connections tab:
+
+5. **Click** on the **"Connections"** tab
+
+You should see `llama-32-3b-instruct` connection that was created by the YAML.
+
+> 📸 **SCREENSHOT NEEDED:** `screenshot-1.6b-connections-tab.png`
+> - Show: Connections tab with the model connection
+> - Highlight: The llama-32-3b-instruct connection
+> - Size: Main content area
+
+---
+
+## Step 1.7: Wait for Your Model to Start
+
+The model needs a few minutes to download and start up.
+
+### Watch the Status in the Dashboard
+
+1. Stay on the **Models** tab in your project
+2. **Watch** the status indicator next to `llama-32-3b-instruct`:
+   - 🟡 **Pending** → Model is being prepared
+   - 🔵 **Progressing** → Model is downloading/starting
+   - 🟢 **Running** → Model is ready! ✅
+
+> ⏱️ **This takes about 3-5 minutes.** Feel free to stretch or grab water!
+
+> 📸 **SCREENSHOT NEEDED:** `screenshot-1.7a-model-pending.png`
+> - Show: Models list with model in "Pending" or "Progressing" status
+> - Highlight: Status indicator (yellow/blue)
+> - Size: Main content area
+
+### Or Check in Your Terminal
+
+You can also wait using the terminal:
+
+```bash
+echo "⏳ Waiting for model to start (this takes 3-5 minutes)..."
+oc wait --for=condition=ready pod -l serving.kserve.io/inferenceservice=llama-32-3b-instruct -n $NS --timeout=300s
+echo "✅ Model is ready!"
+```
+
+**Or check manually:**
+
+```bash
+oc get pods -n $NS | grep llama
+```
+
+When it's ready, you'll see:
+```
+llama-32-3b-instruct-predictor-xxxxx   3/3   Running   0   2m
+```
+
+The `3/3` and `Running` mean it's working!
+
+> 📸 **SCREENSHOT NEEDED:** `screenshot-1.7b-model-running.png`
+> - Show: Models list with model in "Running" status (green)
+> - Highlight: Green status indicator
+> - Size: Main content area
+
+✅ **Success!** Your AI model is now running!
+
+---
+
+# Part 2: Add AI Tools & Test the Playground (30 min)
+
+Now we'll add "tools" that give your AI special abilities, like checking the weather!
+
+## Step 2.1: Make Sure You're in the Right Place
+
+You should already have your terminal open from Part 1. Make sure:
+
+1. **You're in the llamastack-demo folder:**
+   ```bash
+   pwd
+   ```
+   Should show something like `/path/to/llamastack-demo`
+
+2. **Your namespace variable is set:**
+   ```bash
+   echo $NS
+   ```
+   Should show `user-XX` (your user number)
+
+> ⚠️ **If `echo $NS` shows nothing**, run this again (replace XX with your number):
+> ```bash
+> export NS=user-XX
+> cd llamastack-demo
+> ```
+
+---
+
+## Step 2.2: Deploy the Weather Tool
 
 Let's give your AI the ability to check the weather!
 
@@ -373,7 +388,7 @@ Press `Enter`. You'll see several lines saying things were "created".
 
 ---
 
-## Step 2.5: Deploy the HR Tool
+## Step 2.3: Deploy the HR Tool
 
 Let's also deploy an HR (Human Resources) tool. We'll use it later!
 
@@ -387,7 +402,7 @@ Press `Enter`.
 
 ---
 
-## Step 2.6: Wait for the Tools to Start
+## Step 2.5: Wait for the Tools to Start
 
 The tools need a minute to start up. Let's wait for them.
 
@@ -411,7 +426,28 @@ When you see `✅ Weather tool ready!` and `✅ HR tool ready!`, you're good to 
 
 ---
 
-## Step 2.7: Register MCP Servers in AI Asset Endpoints
+## Step 2.6: See Your Tools in the Dashboard
+
+Let's see what we just deployed in the OpenShift AI Dashboard!
+
+1. **Go to** your project in the OpenShift AI Dashboard
+2. **Click** on **"Workloads"** → **"Pods"** in the OpenShift Console (not the AI Dashboard)
+   - Or run `oc get pods -n $NS` in your terminal
+
+You should see several pods running:
+- `mongodb-xxxxx` - Database for weather data
+- `weather-mongodb-mcp-xxxxx` - Weather MCP server
+- `hr-mcp-server-xxxxx` - HR MCP server
+- `llama-32-3b-instruct-predictor-xxxxx` - Your AI model
+
+> 📸 **SCREENSHOT NEEDED:** `screenshot-2.6-pods-running.png`
+> - Show: Pod list showing all running pods (model + MCP servers)
+> - Highlight: The MCP server pods
+> - Size: Main content area
+
+---
+
+## Step 2.7: Register MCP Servers (Admin Step)
 
 Before we can use MCP servers, they need to be registered in OpenShift AI. This is done by applying a ConfigMap to the `redhat-ods-applications` namespace.
 
