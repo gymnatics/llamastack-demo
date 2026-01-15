@@ -36,41 +36,34 @@ For example, if you are **user 5**, then:
 
 1. **A web browser** (Chrome or Firefox recommended)
 2. **Access to OpenShift AI Dashboard** (your instructor will provide the URL)
-3. **A terminal** (for running commands)
+3. **OpenShift Web Terminal** (built into OpenShift - no installation needed!)
 
-### Opening Your Terminal
+### Opening the Web Terminal
 
-**On Mac:**
-1. Press `Cmd + Space` to open Spotlight
-2. Type `Terminal`
-3. Press `Enter`
+The Web Terminal is built into OpenShift - you don't need to install anything on your computer!
 
-**On Windows:**
-1. Press `Windows key`
-2. Type `cmd` or `PowerShell`
-3. Press `Enter`
+1. **Go to** the OpenShift Console (your instructor will provide the URL)
+2. **Log in** with your credentials
+3. **Click** the **terminal icon** `>_` in the top-right corner of the page (next to the help icon)
+4. **Wait** a few seconds for the terminal to start
 
-**On Linux:**
-1. Press `Ctrl + Alt + T`
+> 📸 **SCREENSHOT NEEDED:** `screenshot-0.1-web-terminal-icon.png`
+> - Show: OpenShift Console header with terminal icon highlighted
+> - Highlight: The `>_` terminal icon in the top-right
+> - Size: Header area only
 
-### Logging into OpenShift
+5. You should see a terminal window appear at the bottom of your screen
 
-Your instructor will give you a login command. It looks like this:
+> 📸 **SCREENSHOT NEEDED:** `screenshot-0.2-web-terminal-open.png`
+> - Show: OpenShift Console with Web Terminal open at the bottom
+> - Highlight: The terminal window
+> - Size: Full browser showing terminal panel
 
-```bash
-oc login --token=sha256~xxxxx --server=https://api.cluster.example.com:6443
-```
+✅ **You're already logged in!** The Web Terminal is automatically connected to OpenShift, so you don't need to run any login commands.
 
-1. Copy the command your instructor provides
-2. Paste it into your terminal
-3. Press `Enter`
+> 💡 **Tip:** You can resize the terminal by dragging the top edge. You can also click the "expand" icon to make it full screen.
 
-You should see:
-```
-Logged into "https://api.cluster.example.com:6443" as "your-username"
-```
-
-> ❓ **Stuck?** Raise your hand and ask for help!
+> ❓ **Don't see the terminal icon?** Ask your instructor - the Web Terminal Operator may need to be enabled.
 
 ---
 
@@ -330,23 +323,29 @@ The model needs a few minutes to download and start up.
 
 Now we'll add "tools" that give your AI special abilities, like checking the weather!
 
-## Step 2.1: Download the Workshop Files
+## Step 2.1: Open the Web Terminal
+
+If you closed the Web Terminal, open it again:
+
+1. **Click** the **terminal icon** `>_` in the top-right corner of the OpenShift Console
+2. **Wait** for the terminal to appear at the bottom of your screen
+
+## Step 2.2: Download the Workshop Files
 
 First, let's download the files we need for deploying the MCP tools.
 
-**Make sure your terminal is open and your namespace is set:**
+**Step 1: Set your namespace variable** (replace XX with your number):
 
-```bash
-# Check if NS is set
-echo $NS
-```
-
-If it shows nothing, set it again (replace XX with your number):
 ```bash
 export NS=user-XX
 ```
 
-**Now download the workshop files:**
+For example, if you're user 5:
+```bash
+export NS=user-05
+```
+
+**Step 2: Download the workshop files:**
 
 ```bash
 git clone https://github.com/gymnatics/llamastack-demo.git
@@ -365,11 +364,11 @@ Switched to branch 'workshop-branch'
 
 ---
 
-## Step 2.2: Deploy the Weather Tool
+## Step 2.3: Deploy the Weather Tool
 
 Let's give your AI the ability to check the weather!
 
-**Copy and paste this command:**
+**Copy and paste this command into the Web Terminal:**
 
 ```bash
 oc apply -f manifests/mcp-servers/weather-mongodb/deploy-weather-mongodb.yaml -n $NS
@@ -379,11 +378,11 @@ Press `Enter`. You'll see several lines saying things were "created".
 
 ---
 
-## Step 2.3: Deploy the HR Tool
+## Step 2.4: Deploy the HR Tool
 
 Let's also deploy an HR (Human Resources) tool. We'll use it later!
 
-**Copy and paste this command:**
+**Copy and paste this command into the Web Terminal:**
 
 ```bash
 oc apply -f manifests/workshop/deploy-hr-mcp-simple.yaml -n $NS
