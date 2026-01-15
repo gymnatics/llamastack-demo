@@ -490,9 +490,21 @@ A "notebook" is an interactive document where you can run code. Let's try it!
 
 ### Run the Notebook:
 
-15. **Find the cell** that says `PROJECT_NAME = "user-XX"`
-16. **Change** `user-XX` to your actual user number (e.g., `user-25`)
+> ⚠️ **IMPORTANT:** You MUST update the project name in the notebook before running it!
+
+15. **Find Cell 2** (the third cell) that says:
+    ```python
+    PROJECT_NAME = "user-XX"  # <-- Change XX to your user number
+    ```
+
+16. **Change `user-XX`** to your actual project name. For example, if you are user-25:
+    ```python
+    PROJECT_NAME = "user-25"
+    ```
+
 17. **Click** the **"Run All"** button (▶▶) at the top, or go to **Run** → **Run All Cells**
+
+> ❌ **If you see a `ConnectionError` about "Name or service not known"**, it means you forgot to update `PROJECT_NAME`. Go back to Cell 2 and fix it!
 
 **Look at the output!** You should see:
 - 1 LLM model available
