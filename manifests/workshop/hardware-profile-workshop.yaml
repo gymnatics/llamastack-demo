@@ -1,0 +1,51 @@
+# Hardware Profile Example for Workshop
+#
+# This is a REFERENCE example that participants will learn to create during the workshop.
+# Each participant creates their own hardware profile as part of the learning exercise.
+#
+# This profile is designed for:
+# - Single GPU allocation per participant
+# - Reasonable CPU/Memory limits for vLLM serving
+# - Compatible with most NVIDIA GPU types (L4, A10G, T4, etc.)
+#
+# Participants can either:
+# 1. Create via UI: Settings → Hardware profiles → Create hardware profile
+# 2. Apply via CLI: oc apply -f manifests/workshop/hardware-profile-workshop.yaml
+#
+# Note: GPU nodes must be provisioned separately by the admin before the workshop.
+#
+apiVersion: infrastructure.opendatahub.io/v1
+kind: HardwareProfile
+metadata:
+  annotations:
+    opendatahub.io/dashboard-feature-visibility: '[]'
+    opendatahub.io/disabled: 'false'
+    opendatahub.io/display-name: GPU Profile
+    opendatahub.io/description: 'Single GPU profile for model serving'
+  name: gpu-profile
+  namespace: redhat-ods-applications
+spec:
+  identifiers:
+    - defaultCount: '4'
+      displayName: CPU
+      identifier: cpu
+      maxCount: '8'
+      minCount: 1
+      resourceType: CPU
+    - defaultCount: 16Gi
+      displayName: Memory
+      identifier: memory
+      maxCount: 32Gi
+      minCount: 8Gi
+      resourceType: Memory
+    - defaultCount: 1
+      displayName: GPU
+      identifier: nvidia.com/gpu
+      maxCount: 1
+      minCount: 1
+      resourceType: Accelerator
+  # Optional: Add tolerations if GPU nodes are tainted
+  # tolerations:
+  #   - key: "nvidia.com/gpu"
+  #     operator: "Exists"
+  #     effect: "NoSchedule"
