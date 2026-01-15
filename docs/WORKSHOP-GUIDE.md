@@ -21,9 +21,10 @@
 |-------|----------|-----|-------------|
 | **Pre-Setup** | Before | Admin | GPU provisioning, RHOAI + LlamaStack installation |
 | **Part 1** | 45 min | Users | Create project, hardware profile, deploy model |
-| **Part 2** | 30 min | Users | Test MCP servers in GenAI Playground |
-| **Part 3** | 30 min | Admin | Azure OpenAI demo (admin only) |
-| **Part 4** | 30 min | Users | Client integration with notebooks |
+| **Part 2** | 30 min | Users | Phase 1 - Enable Playground with Weather MCP |
+| **Part 3** | 30 min | Users | Phase 2 - Iterate LlamaStack config (add more MCPs) |
+| **Part 4** | 30 min | Admin | Azure OpenAI demo (admin only) |
+| **Part 5** | 30 min | Users | Client integration with notebooks |
 | **Wrap-up** | 15 min | All | Q&A and cleanup |
 
 ---
@@ -221,9 +222,9 @@ oc get pods -n user-XX | grep llama
 
 ---
 
-## 🎮 Part 2: GenAI Studio Playground (30 min)
+## 🎮 Part 2: Phase 1 - LlamaStack with Weather MCP (30 min)
 
-> **Goal:** Test the model and MCP servers in the Playground
+> **Goal:** Enable the Playground and test with a single MCP server (Weather)
 
 ### Step 2.1: Enable Playground
 
@@ -262,21 +263,127 @@ You should see:
 - The agent calls the `getforecast` tool
 - Weather data is returned and summarized
 
-### Step 2.5: Explore Tool Calling
+### Step 2.5: Check Current Configuration
 
-Try more complex queries:
+Let's see what tools are currently available:
 
+```bash
+# Check available tools (should show Weather only)
+oc exec deployment/lsd-genai-playground -n user-XX -- \
+  curl -s http://localhost:8321/v1/tools | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+tools=data if isinstance(data,list) else data.get('data',[])
+mcps=set(t.get('toolgroup_id','') for t in tools if t.get('toolgroup_id','').startswith('mcp::'))
+print(f'MCP Servers: {len(mcps)}')
+for mcp in sorted(mcps):
+    print(f'  - {mcp}')"
 ```
-Compare the weather in Tokyo and London. Which city is warmer today?
+
+**Expected Output (Phase 1):**
+```
+MCP Servers: 1
+  - mcp::weather-data
 ```
 
 ---
 
-## 🔐 Part 3: Azure OpenAI Demo (Admin Only - 30 min)
+## 🔄 Part 3: Phase 2 - Iterate LlamaStack (Add More MCPs) (30 min)
 
-> **Goal:** Admin demonstrates adding Azure OpenAI as a second provider
+> **Goal:** Learn how to iterate your LlamaStack distribution by adding more MCP servers
+
+This is the key learning: **LlamaStack configurations can be updated without code changes!**
+
+### Step 3.1: View Current LlamaStack Config
+
+```bash
+# View the current LlamaStack configuration
+oc get configmap llama-stack-config -n user-XX -o yaml | grep -A30 "tool_groups:"
+```
+
+You should see only the Weather MCP in the `tool_groups` section.
+
+### Step 3.2: Apply Phase 2 Configuration
+
+Now let's add more MCP servers (HR and Jira) to your LlamaStack:
+
+```bash
+# Apply the Phase 2 config (adds HR + Jira MCPs)
+oc apply -f manifests/workshop/llama-stack-config-workshop-phase2.yaml -n user-XX
+
+# Restart LlamaStack to pick up the new config
+oc delete pod -l app=lsd-genai-playground -n user-XX
+
+# Wait for restart
+echo "Waiting for LlamaStack to restart..."
+sleep 30
+```
+
+### Step 3.3: Verify New Tools Are Available
+
+```bash
+# Check tools again (should now show 3 MCP servers)
+oc exec deployment/lsd-genai-playground -n user-XX -- \
+  curl -s http://localhost:8321/v1/tools | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+tools=data if isinstance(data,list) else data.get('data',[])
+groups={}
+for t in tools:
+    tg=t.get('toolgroup_id','')
+    if tg not in groups: groups[tg]=0
+    groups[tg]+=1
+print(f'Total tools: {len(tools)}')
+for tg,count in sorted(groups.items()):
+    print(f'  - {tg}: {count} tools')"
+```
+
+**Expected Output (Phase 2):**
+```
+Total tools: 13
+  - builtin::rag: 2 tools
+  - mcp::hr-tools: 5 tools
+  - mcp::jira-confluence: 5 tools
+  - mcp::weather-data: 1 tools
+```
+
+### Step 3.4: Test New MCP Servers in Playground
+
+Go back to the **GenAI Studio Playground** and try:
+
+**HR MCP:**
+```
+List all employees in the company
+```
+
+**Jira MCP:**
+```
+What are the open issues in the project?
+```
+
+### Step 3.5: Key Takeaways
+
+| Phase 1 | Phase 2 |
+|---------|---------|
+| 1 MCP Server (Weather) | 3 MCP Servers (Weather + HR + Jira) |
+| 3 tools | 13 tools |
+| Basic weather queries | Weather + Employee + Project queries |
+
+**What you learned:**
+1. ✅ LlamaStack configs are just YAML - easy to modify
+2. ✅ Adding MCP servers requires no code changes
+3. ✅ Just update ConfigMap and restart the pod
+4. ✅ New tools are automatically discovered by clients
+
+---
+
+## 🔐 Part 4: Azure OpenAI Demo (Admin Only - 30 min)
+
+> **Goal:** Admin demonstrates adding Azure OpenAI as a second inference provider
 
 ### What Participants Will See
+
+You just learned how to add MCP servers. Now the admin will show you how to add a **second inference provider** (Azure OpenAI) - demonstrating that LlamaStack can abstract multiple LLM backends.
 
 The admin will demonstrate:
 1. How to add Azure OpenAI as a second inference provider
@@ -286,17 +393,17 @@ The admin will demonstrate:
 ### Admin Demo Steps
 
 ```bash
-# 1. Show current Phase 1 config (1 model, 1 MCP)
-oc get configmap llama-stack-config -n workshop-admin -o yaml | head -60
+# 1. Show current config (1 model - vLLM only)
+oc get configmap llama-stack-config -n <admin-namespace> -o yaml | head -60
 
-# 2. Apply Phase 2 config (adds Azure OpenAI)
-oc apply -f manifests/llamastack/llama-stack-config-phase2.yaml
+# 2. Apply config with Azure OpenAI added
+oc apply -f manifests/llamastack/llama-stack-config-phase2.yaml -n <admin-namespace>
 
 # 3. Restart LlamaStack
-oc delete pod -l app=lsd-genai-playground -n workshop-admin
+oc delete pod -l app=lsd-genai-playground -n <admin-namespace>
 
 # 4. Verify 2 models now available
-oc exec deployment/lsd-genai-playground -n workshop-admin -- \
+oc exec deployment/lsd-genai-playground -n <admin-namespace> -- \
   curl -s http://localhost:8321/v1/models | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
@@ -306,20 +413,34 @@ for m in llms:
     print(f\"  - {m.get('identifier')} ({m.get('provider_id')})\")"
 ```
 
+**Expected Output:**
+```
+LLM Models: 2
+  - llama-32-3b-instruct (vllm-inference)
+  - gpt-4.1-mini (azure-openai)
+```
+
 ### Key Takeaways for Participants
 
-1. **No code changes needed** - just update the ConfigMap
-2. **Secrets stay with admin** - Azure keys never exposed to users
-3. **Same API, different backends** - clients don't need to change
-4. **Easy iteration** - add/remove providers without redeployment
+| What You Did (Part 3) | What Admin Did (Part 4) |
+|-----------------------|-------------------------|
+| Added MCP servers (tools) | Added inference provider (model) |
+| Weather → Weather + HR + Jira | vLLM → vLLM + Azure OpenAI |
+| No secrets needed | Requires Azure API keys |
+
+**The Pattern:**
+1. ✅ **No code changes needed** - just update the ConfigMap
+2. ✅ **Secrets stay with admin** - Azure keys never exposed to users
+3. ✅ **Same API, different backends** - clients don't need to change
+4. ✅ **Easy iteration** - add/remove providers/tools without redeployment
 
 ---
 
-## 📓 Part 4: Client Integration (30 min)
+## 📓 Part 5: Client Integration (30 min)
 
 > **Goal:** Use notebooks to interact with LlamaStack programmatically
 
-### Step 4.1: Create a Workbench
+### Step 5.1: Create a Workbench
 
 1. In your project, go to **Workbenches**
 2. Click **Create workbench**
@@ -329,21 +450,21 @@ for m in llms:
    - **Hardware profile:** (use default CPU profile)
 4. Click **Create**
 
-### Step 4.2: Upload the Demo Notebook
+### Step 5.2: Upload the Demo Notebook
 
 1. Once the workbench is running, click **Open**
 2. Upload `notebooks/workshop_client_demo.ipynb`
 3. Open the notebook
 
-### Step 4.3: Run the Notebook
+### Step 5.3: Run the Notebook
 
 The notebook demonstrates:
 1. Listing available models
-2. Listing MCP tools
+2. Listing MCP tools (you should now see all 3 MCP servers from Phase 2!)
 3. Making chat completions
 4. Using tool calling
 
-### Step 4.4: Experiment
+### Step 5.4: Experiment
 
 Try modifying the notebook to:
 - Ask different questions
@@ -445,6 +566,31 @@ oc describe node <gpu-node> | grep -A10 "Allocated resources"
 
 ## 📊 Workshop Architecture
 
+### Phase 1 → Phase 2 Progression (User)
+
+```
+Phase 1 (Initial):                    Phase 2 (After Iteration):
+┌─────────────────────┐               ┌─────────────────────┐
+│     user-XX         │               │     user-XX         │
+│                     │               │                     │
+│ ┌─────────────────┐ │               │ ┌─────────────────┐ │
+│ │ vLLM Model      │ │               │ │ vLLM Model      │ │
+│ │ (1 GPU)         │ │               │ │ (1 GPU)         │ │
+│ └─────────────────┘ │               │ └─────────────────┘ │
+│                     │               │                     │
+│ ┌─────────────────┐ │               │ ┌─────────────────┐ │
+│ │ LlamaStack      │ │    ──────►    │ │ LlamaStack      │ │
+│ │                 │ │   Update      │ │                 │ │
+│ │ MCP: Weather    │ │   ConfigMap   │ │ MCP: Weather    │ │
+│ │                 │ │               │ │ MCP: HR         │ │
+│ │ Tools: 3        │ │               │ │ MCP: Jira       │ │
+│ └─────────────────┘ │               │ │ Tools: 13       │ │
+└─────────────────────┘               │ └─────────────────┘ │
+                                      └─────────────────────┘
+```
+
+### Full Workshop Architecture
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        OpenShift Cluster                            │
@@ -462,9 +608,17 @@ oc describe node <gpu-node> | grep -A10 "Allocated resources"
 │  │                 │  │                 │  │                 │     │
 │  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │     │
 │  │ │ LlamaStack  │ │  │ │ LlamaStack  │ │  │ │ LlamaStack  │ │     │
-│  │ │ Distribution│ │  │ │ Distribution│ │  │ │ Distribution│ │     │
+│  │ │ Phase 1→2   │ │  │ │ Phase 1→2   │ │  │ │ Phase 1→2   │ │     │
 │  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │     │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘     │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                 workshop-shared (MCP Servers)                │   │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐                │   │
+│  │  │ Weather   │  │ HR        │  │ Jira      │                │   │
+│  │  │ MCP       │  │ MCP       │  │ MCP       │                │   │
+│  │  └───────────┘  └───────────┘  └───────────┘                │   │
+│  └─────────────────────────────────────────────────────────────┘   │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │                    Admin Namespace                           │   │
@@ -487,6 +641,10 @@ oc describe node <gpu-node> | grep -A10 "Allocated resources"
 - [ ] GPU MachineSet created with 20+ GPUs available
 - [ ] RHOAI 3.0 installed with LlamaStack operator enabled
 - [ ] GenAI Studio enabled in OdhDashboardConfig
+- [ ] Shared MCP servers deployed in `workshop-shared` namespace:
+  - [ ] Weather MCP server
+  - [ ] HR MCP server
+  - [ ] Jira MCP server
 - [ ] Azure OpenAI secret created in admin namespace (for demo)
 - [ ] User accounts created with access to OpenShift AI dashboard
 - [ ] User number assignments ready (user-01 through user-20)
