@@ -438,76 +438,18 @@ You should see about **5 tools** (all weather-related).
 
 ---
 
-## Step 2.7: Run the Notebook (First Time)
+## Step 2.7: Watch the Notebook Demo (Admin Demo)
 
-A "notebook" is an interactive document where you can run code. Let's try it!
+> 🎓 **This is a demo by your instructor** - you'll watch the instructor demonstrate how to interact with LlamaStack programmatically using a Jupyter notebook.
 
-### Create a Workbench:
+**What the instructor will show:**
+- How to list available models via the LlamaStack API
+- How to list available tools (MCP servers)
+- How to create an agent with tool calling enabled
+- How to ask questions that use the Weather MCP tool
+- The difference between chat completions and agent-based tool calling
 
-1. **Go to** your project in OpenShift AI Dashboard
-2. **Click** on **"Workbenches"** tab
-3. **Click** **"Create workbench"**
-4. **Fill in the form:**
-
-   | Field | What to Select/Enter |
-   |-------|---------------------|
-   | **Name** | `user-XX` (use your user number, e.g., `user-25`) |
-   | **Image selection** | `Jupyter | Data Science | CPU | Python 3.12` |
-   | **Version selection** | `2025.2` (or latest available) |
-   | **Deployment size** | `Small` is fine |
-
-   > 💡 **Tip:** You can leave the Description, Environment variables, Cluster storage, and Connections sections as default.
-
-5. **Click** **"Create workbench"** button at the bottom
-6. **Wait** for the status to show **"Running"** (1-2 minutes)
-7. **Click** the **"Open"** link to launch JupyterLab
-
-### Get the Workshop Notebook:
-
-8. In JupyterLab, look at the top menu
-9. **Click** **"Git"** → **"Clone a Repository"**
-10. **Paste** this URL:
-    ```
-    https://github.com/gymnatics/llamastack-demo.git
-    ```
-11. **Click** **"Clone"**
-
-12. **Switch to the workshop branch:**
-    - In JupyterLab, open a **Terminal** (File → New → Terminal)
-    - Run these commands:
-      ```bash
-      cd llamastack-demo
-      git checkout workshop-branch
-      ```
-    - You should see: `Switched to branch 'workshop-branch'`
-
-13. In the file browser on the left, **navigate to:**
-    `llamastack-demo` → `notebooks` → `workshop_client_demo.ipynb`
-14. **Double-click** to open it
-
-### Run the Notebook:
-
-> ⚠️ **IMPORTANT:** You MUST update the project name in the notebook before running it!
-
-15. **Find Cell 2** (the third cell) that says:
-    ```python
-    PROJECT_NAME = "user-XX"  # <-- Change XX to your user number
-    ```
-
-16. **Change `user-XX`** to your actual project name. For example, if you are user-25:
-    ```python
-    PROJECT_NAME = "user-25"
-    ```
-
-17. **Click** the **"Run All"** button (▶▶) at the top, or go to **Run** → **Run All Cells**
-
-> ❌ **If you see a `ConnectionError` about "Name or service not known"**, it means you forgot to update `PROJECT_NAME`. Go back to Cell 2 and fix it!
-
-**Look at the output!** You should see:
-- 1 LLM model available
-- About 5 MCP tools (Weather only)
-
-> 🎯 **Key Learning:** Even though you can see BOTH Weather and HR MCP servers in the AI Asset Endpoints UI, the notebook only shows Weather tools. That's because **only Weather is configured in your LlamaStack's `tool_groups`**. The UI shows what's *available*, but the ConfigMap controls what's *connected*.
+> 📝 **Note:** The notebook uses the LlamaStack Agents API to enable tool calling. This is different from the simple chat completions endpoint.
 
 ✅ **Success!** You've completed Part 2!
 
@@ -718,7 +660,6 @@ You've completed the LlamaStack Workshop!
 ✅ Connected shared MCP tools (Weather, HR) to your AI  
 ✅ Used the Playground to chat with your AI  
 ✅ Updated your AI's configuration to add new tools  
-✅ Ran notebooks to interact with your AI programmatically  
 ✅ Learned how LlamaStack makes it easy to extend AI capabilities  
 
 ---
@@ -759,13 +700,6 @@ This usually means GPUs are busy. Wait a few minutes, or ask the instructor.
 1. Make sure your model shows "Running" status
 2. Try refreshing the browser page
 3. Wait 2-3 minutes after enabling Playground
-
-## Notebook connection error
-
-Make sure you updated `PROJECT_NAME` to match your actual project:
-```python
-PROJECT_NAME = "user-05"  # Use YOUR number!
-```
 
 ## "Permission denied" errors
 
