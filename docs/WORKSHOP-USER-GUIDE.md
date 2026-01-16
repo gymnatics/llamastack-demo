@@ -228,7 +228,7 @@ The model needs a few minutes to download and start up.
 
 ---
 
-# Part 2: Enable AI Playground & Add Weather Tool (30 min)
+# Part 2: Enable AI Playground & Test Weather MCP(30 min)
 
 Now we'll enable the AI Playground and connect a weather tool to give your AI special abilities!
 
@@ -260,7 +260,7 @@ For example, if you're user 5:
 export NS=user-05
 ```
 
-**Step 2: Download the workshop files (for notebooks later):**
+**Step 2: Clone the git repository in the web terminal:**
 
 ```bash
 git clone https://github.com/gymnatics/llamastack-demo.git
@@ -316,6 +316,8 @@ Type it in the chat box and press Enter (or click Send).
 
 **Now, test the weather tools:**
 
+You will have to click on the lock icon to activate the mcp server, and make sure it is checked.
+
 > 💡 **Tip:** The weather tools work best with specific requests. Here are some recommended prompts:
 
 **List available stations (simple, always works):**
@@ -344,7 +346,6 @@ Get current weather for station VIDP
 
 > 📝 **Station codes:** VIDP = New Delhi, RJTT = Tokyo, KJFK = New York, EGLL = London, YSSY = Sydney
 
-🎉 **Amazing!** Your AI is using the weather tool to get real data!
 
 > ⚠️ **Troubleshooting:** If you get an error about "parameters could not be parsed", try using simpler prompts like "List all weather stations" or "Get weather statistics". The model sometimes has trouble with complex queries.
 
@@ -705,46 +706,6 @@ Now the instructor will show you something cool: adding a cloud AI (Azure OpenAI
 
 > 📝 **Note:** Only the admin has the Azure API keys, so this is a demo only.
 
----
-
-# Part 5: Re-run the Notebook (30 min)
-
-Remember the notebook you ran in Part 2? Let's run it again and see the difference!
-
-## Step 5.1: Open Your Notebook
-
-1. Go back to your **Workbench** (JupyterLab)
-2. Open `workshop_client_demo.ipynb` if it's not already open
-
-## Step 5.2: Restart and Re-run
-
-1. **Click** on **"Kernel"** in the top menu
-2. **Click** **"Restart Kernel and Run All Cells"**
-3. **Click** **"Restart"** to confirm
-
-## Step 5.3: Compare the Results!
-
-**Part 2 (first run):**
-- MCP Tools: ~5 (Weather only)
-
-**Part 5 (second run):**
-- MCP Tools: ~10 (Weather + HR)
-
-🎯 **The notebook code didn't change at all!** The same code automatically discovered the new HR tools because you updated the LlamaStack configuration.
-
-> - Note: This should be visually comparable to screenshot-2.11f to show the difference
-
-## Step 5.4: Try Some Queries in the Notebook
-
-Find the cell where you can enter your own question and try:
-
-```python
-my_question = "What's the weather in London and who are the employees in Engineering?"
-```
-
-Run that cell to see your AI use both tools!
-
----
 
 # 🎉 Congratulations!
 
