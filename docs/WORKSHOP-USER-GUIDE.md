@@ -132,15 +132,11 @@ A "model connection" tells OpenShift where to download the AI model from.
 
    | Field | What to Enter |
    |-------|---------------|
-   | **URI** | (copy the text below exactly) |
-
-   ```
-   oci://quay.io/redhat-ai-services/modelcar-catalog:llama-3.2-3b-instruct
-   ```   
+   | **URI** | `oci://quay.io/redhat-ai-services/modelcar-catalog:llama-3.2-3b-instruct` |
    | **Name** | `llama-32-3b-instruct` |
    | **Model Type** | Generative AI Model |
 
-   > 💡 **Tip:** Triple-click the URI above to select it all, then copy and paste.
+   > 💡 **Tip:** Copy the URI exactly as shown above.
 
 7. **Click** the **"Create"** button
 
