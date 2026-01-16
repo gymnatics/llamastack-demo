@@ -7,12 +7,22 @@
 ## 📋 What You'll Learn Today
 
 By the end of this workshop, you will:
-- ✅ Deploy your own AI model on OpenShift
-- ✅ Connect AI tools (MCP servers) to your model
-- ✅ Chat with your AI using a web interface
-- ✅ See how easy it is to add new capabilities to AI
+- ✅ Deploy your own AI model on OpenShift (hands-on)
+- ✅ Chat with your AI using a web interface (hands-on)
+- ✅ See how MCP tools extend AI capabilities (demo)
+- ✅ Understand how to add new tools via configuration (demo)
 
-**Total time:** ~2.5 hours
+**Total time:** ~2 hours
+
+### Workshop Structure
+
+| Part | Type | Duration |
+|------|------|----------|
+| Part 1: Deploy Model | ✋ Hands-on | ~45 min |
+| Part 2: Enable Playground & Test | ✋ Hands-on | ~20 min |
+| Part 2.5+: MCP Tools & Notebook | 🎓 Admin Demo | ~30 min |
+| Part 3: Add HR Tools | 🎓 Admin Demo | ~15 min |
+| Part 4: Azure OpenAI | 🎓 Admin Demo | ~10 min |
 
 ---
 
@@ -228,11 +238,11 @@ The model needs a few minutes to download and start up.
 
 ---
 
-# Part 2: Enable AI Playground & Test Weather MCP(30 min)
+# Part 2: Enable AI Playground & Test Your AI (30 min)
 
-Now we'll enable the AI Playground and connect a weather tool to give your AI special abilities!
+Now we'll enable the AI Playground and test your AI!
 
-> 📝 **Note:** The MCP servers (Weather and HR) are already deployed and shared by your instructor. You just need to connect them to your AI!
+> 📝 **Note:** The MCP servers (Weather and HR) are already deployed and shared by your instructor. The instructor will demonstrate how to connect them to your AI later.
 
 ## Step 2.1: Open the Web Terminal
 
@@ -291,7 +301,7 @@ The "Playground" is a chat interface where you can talk to your AI. When you ena
 
 > 💡 You might see a loading indicator. Just wait for it to finish.
 
-> ⚠️ **Important:** You may see MCP servers (Weather, HR) listed in the AI Asset Endpoints page. However, **they are NOT connected to your AI yet!** The Playground is created with a default configuration that has NO MCP tools. We'll add them in the next step.
+> ⚠️ **Important:** You may see MCP servers (Weather, HR) listed in the AI Asset Endpoints page. However, **they are NOT connected to your AI yet!** The Playground is created with a default configuration that has NO MCP tools. The instructor will show how to connect them later in the demo.
 
 ---
 
@@ -307,47 +317,29 @@ Let's chat with your AI!
 
 ### Try these prompts:
 
-**First, a simple test:**
+**Simple test:**
 ```
 What is the capital of France?
 ```
 
 Type it in the chat box and press Enter (or click Send).
 
-**Now, test the weather tools:**
-
-You will have to click on the lock icon to activate the mcp server, and make sure it is checked.
-
-> 💡 **Tip:** The weather tools work best with specific requests. Here are some recommended prompts:
-
-**List available stations (simple, always works):**
+**Try a few more:**
 ```
-List all available weather stations
-```
-
-**Get weather statistics:**
-```
-Get weather statistics
-```
-
-**Search for weather by location:**
-```
-Search for weather observations in New Delhi
+Explain machine learning in simple terms.
 ```
 
 ```
-Search for weather in Tokyo with limit 3
+Write a haiku about coding.
 ```
 
-**Get current weather for a specific station:**
 ```
-Get current weather for station VIDP
+What is 2 + 2?
 ```
 
-> 📝 **Station codes:** VIDP = New Delhi, RJTT = Tokyo, KJFK = New York, EGLL = London, YSSY = Sydney
+🎉 **Your AI is working!** You can chat with it about anything.
 
-
-> ⚠️ **Troubleshooting:** If you get an error about "parameters could not be parsed", try using simpler prompts like "List all weather stations" or "Get weather statistics". The model sometimes has trouble with complex queries.
+> 📝 **Note:** Right now, your AI can only answer from its training data. In the next section, the instructor will show how to give it access to **live data** through MCP tools!
 
 ✅ **Success!** You've completed the hands-on portion of Part 2!
 
@@ -355,306 +347,120 @@ Get current weather for station VIDP
 
 # 🎓 Part 2.5 onwards: Admin Demo
 
-> **The following sections will be demonstrated by your instructor.** Watch and learn how to configure MCP tools via the ConfigMap.
+> **The following sections will be demonstrated by your instructor.** Sit back, watch, and learn how MCP tools work!
 
 ---
 
-## Step 2.5: Add Weather MCP to LlamaStack Config (Admin Demo)
+## What the Instructor Will Demonstrate
 
-> 🎓 **Watch the instructor demonstrate this section.**
+### 1. Connecting MCP Tools to LlamaStack
 
-The instructor will show how to connect the Weather MCP server to LlamaStack by patching the ConfigMap.
+The instructor will show how to:
+- Export the current LlamaStack configuration
+- Add the Weather MCP server to the `tool_groups` section
+- Apply the updated configuration
+- Restart LlamaStack to pick up the changes
 
-**What the instructor will show:**
+**Key concept:** MCP tools are connected by updating a ConfigMap - no code changes needed!
 
-```bash
-# Step 1: Get the current config
-oc get configmap llama-stack-config -n $NS -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
+### 2. Testing MCP Tools in the Playground
 
-# Step 2: Check current tool_groups (should only have builtin::rag)
-echo "Current tool_groups:"
-grep -A5 "tool_groups:" /tmp/current-config.yaml
-```
+After connecting the Weather MCP, the instructor will demonstrate:
+- How to enable MCP tools in the Playground (click the lock icon)
+- Asking weather-related questions:
+  - "List all available weather stations"
+  - "Get weather statistics"
+  - "Get current weather for station VIDP"
 
-You should see only `builtin::rag`. Now let's add the Weather MCP:
+**Key concept:** The AI can now access live weather data!
 
-```bash
-# Step 3: Add Weather MCP to the config (using shared server in admin-workshop)
-cat /tmp/current-config.yaml | sed 's/tool_groups:/tool_groups:\
-- toolgroup_id: mcp::weather-data\
-  provider_id: model-context-protocol\
-  mcp_endpoint:\
-    uri: http:\/\/weather-mongodb-mcp.admin-workshop.svc.cluster.local:8000\/mcp/' > /tmp/patched-config.yaml
+### 3. Direct Tool Invocation (Notebook Demo)
 
-# Step 4: Verify the patch looks correct
-echo "Patched tool_groups:"
-grep -A10 "tool_groups:" /tmp/patched-config.yaml
-```
+The instructor will show how to call MCP tools programmatically:
+- List available models via the LlamaStack API
+- List available tools (MCP servers)
+- Call tools directly via `/v1/tool-runtime/invoke`
+- Create an agent that automatically uses tools
 
-You should now see both `mcp::weather-data` and `builtin::rag`.
+**Key concept:** There are two ways to use MCP tools:
+1. **Direct invocation** - Call specific tools when you know what you need
+2. **Agent-based** - Let the AI decide which tools to use
 
-```bash
-# Step 5: Apply the patched config
-oc create configmap llama-stack-config \
-  --from-file=run.yaml=/tmp/patched-config.yaml \
-  -n $NS \
-  --dry-run=client -o yaml | oc replace -f -
+### 4. Adding More Tools (HR MCP)
 
-# Step 6: Restart LlamaStack to pick up the new config
-oc delete pod -l app=lsd-genai-playground -n $NS
+The instructor will demonstrate adding a second MCP server:
+- Patch the ConfigMap to add HR MCP
+- Restart LlamaStack
+- Test HR tools: "List all employees", "Get vacation balance for EMP001"
+- Use BOTH tools together: "List weather stations and list employees"
 
-# Step 7: Wait for restart
-echo "⏳ Waiting for LlamaStack to restart..."
-sleep 20
-oc wait --for=condition=ready pod -l app=lsd-genai-playground -n $NS --timeout=120s
-echo "✅ LlamaStack restarted with Weather MCP!"
-```
-
-> 📝 **What just happened?** 
-> - We exported the current config created by the operator
-> - Added the Weather MCP (from the shared `admin-workshop` namespace) to the `tool_groups` section
-> - Replaced the ConfigMap with the patched version
-> - Restarted the pod to load the new config
-
-
+**Key concept:** Adding new capabilities is just a config change!
 
 ---
 
-## Step 2.6: Check What Tools Are Available
+## 📝 What You're Learning
 
-Let's verify what tools your AI can use right now.
-
-**Go to your terminal and copy-paste this command:**
-
-```bash
-oc exec deployment/lsd-genai-playground -n $NS -- \
-  curl -s http://localhost:8321/v1/tools | python3 -c "
-import json,sys
-data=json.load(sys.stdin)
-tools=data if isinstance(data,list) else data.get('data',[])
-mcps=[t for t in tools if t.get('toolgroup_id','').startswith('mcp::')]
-print('='*50)
-print(f'🛠️  Available Tools: {len(mcps)}')
-print('='*50)
-for t in mcps:
-    print(f\"  • {t.get('name')}\")"
-```
-
-You should see about **5 tools** (all weather-related).
-
-> 📝 **Note:** The HR tool is available but not connected to your AI yet. We'll add it in Part 3!
+| Concept | What It Means |
+|---------|---------------|
+| **MCP Server** | A service that provides tools (like Weather or HR data) |
+| **Tool Groups** | Collections of related tools from one MCP server |
+| **ConfigMap** | Kubernetes configuration that tells LlamaStack which tools to use |
+| **Direct Invocation** | Calling a specific tool by name |
+| **Agent-Based** | Letting the AI decide which tools to use |
 
 ---
 
-## Step 2.7: Watch the Notebook Demo (Admin Demo)
-
-> 🎓 **This is a demo by your instructor** - you'll watch the instructor demonstrate how to interact with LlamaStack programmatically using a Jupyter notebook.
-
-**What the instructor will show:**
-- How to list available models via the LlamaStack API
-- How to list available tools (MCP servers)
-- How to create an agent with tool calling enabled
-- How to ask questions that use the Weather MCP tool
-- The difference between chat completions and agent-based tool calling
-
-> 📝 **Note:** The notebook uses the LlamaStack Agents API to enable tool calling. This is different from the simple chat completions endpoint.
-
-✅ **Success!** You've completed Part 2!
+✅ **After the demo**, you'll understand how easy it is to extend AI capabilities with MCP tools!
 
 ---
 
-# Part 3: Add More Tools to Your AI (Admin Demo)
+# Part 3: Adding HR Tools (Admin Demo)
 
-> 🎓 **This entire section is demonstrated by your instructor.**
+> 🎓 **This section is demonstrated by your instructor.**
 
-Now the instructor will show how to add the HR tool to expand the AI's capabilities!
+The instructor will show how to add the HR MCP server, giving the AI access to employee data, vacation balances, and job openings.
 
-## Step 3.1: See the Current Configuration
+## What You'll See
 
-Let's look at what tools your AI is currently configured to use.
+1. **Patching the ConfigMap** to add `mcp::hr-tools`
+2. **Restarting LlamaStack** to pick up the new config
+3. **Verifying** that HR tools are now available (~10 total tools)
+4. **Testing in Playground:**
+   - "List all employees"
+   - "Get vacation balance for employee EMP001"
+   - "List all job openings"
+5. **Using BOTH tools together:**
+   - "List weather stations and list all employees"
 
-**In your terminal, run:**
+## Key Takeaway
 
-```bash
-oc get configmap llama-stack-config -n $NS -o jsonpath='{.data.run\.yaml}' | grep -A10 "tool_groups:"
-```
-
-You'll see something like:
-```yaml
-tool_groups:
-- toolgroup_id: mcp::weather-data
-  provider_id: model-context-protocol
-  mcp_endpoint:
-    uri: http://weather-mongodb-mcp.admin-workshop.svc.cluster.local:8000/mcp
-- toolgroup_id: builtin::rag
-  provider_id: rag-runtime
-```
-
-Notice: Only Weather MCP and builtin RAG are listed - no HR MCP yet!
-
----
-
-## Step 3.2: Add HR MCP to the Configuration
-
-Now let's add the HR MCP tool to the configuration using the same patching approach.
-
-> 📝 **Note:** The HR MCP server is also shared and running in the `admin-workshop` namespace.
-
-**Copy and paste these commands:**
-
-```bash
-# Step 1: Get the current config
-oc get configmap llama-stack-config -n $NS -o jsonpath='{.data.run\.yaml}' > /tmp/current-config.yaml
-
-# Step 2: Add HR MCP to the config (after Weather MCP)
-cat /tmp/current-config.yaml | sed 's/- toolgroup_id: builtin::rag/- toolgroup_id: mcp::hr-tools\
-  provider_id: model-context-protocol\
-  mcp_endpoint:\
-    uri: http:\/\/hr-mcp-server.admin-workshop.svc.cluster.local:8000\/mcp\
-- toolgroup_id: builtin::rag/' > /tmp/patched-config.yaml
-
-# Step 3: Verify the patch
-echo "New tool_groups:"
-grep -A15 "tool_groups:" /tmp/patched-config.yaml
-```
-
-You should now see **three** entries: `mcp::weather-data`, `mcp::hr-tools`, and `builtin::rag`.
-
-```bash
-# Step 4: Apply the patched config
-oc create configmap llama-stack-config \
-  --from-file=run.yaml=/tmp/patched-config.yaml \
-  -n $NS \
-  --dry-run=client -o yaml | oc replace -f -
-
-echo "✅ Config updated!"
-```
-
----
-
-## Step 3.3: Restart the AI to Apply Changes
-
-The AI needs to restart to pick up the new configuration.
-
-**Copy and paste these commands:**
-
-```bash
-echo "🔄 Restarting your AI..."
-oc delete pod -l app=lsd-genai-playground -n $NS
-```
-
-```bash
-echo "⏳ Waiting for AI to restart (about 30 seconds)..."
-sleep 30
-oc wait --for=condition=ready pod -l app=lsd-genai-playground -n $NS --timeout=120s
-echo "✅ AI is ready with new tools!"
-```
-
----
-
-## Step 3.4: Verify the New Tools
-
-Let's check that the HR tool is now available.
-
-**Copy and paste this command:**
-
-```bash
-oc exec deployment/lsd-genai-playground -n $NS -- \
-  curl -s http://localhost:8321/v1/tools | python3 -c "
-import json,sys
-data=json.load(sys.stdin)
-tools=data if isinstance(data,list) else data.get('data',[])
-groups={}
-for t in tools:
-    tg=t.get('toolgroup_id','')
-    if tg not in groups: groups[tg]=[]
-    groups[tg].append(t.get('name'))
-print('='*50)
-print(f'🛠️  Total Tools: {len(tools)}')
-print('='*50)
-for tg,names in sorted(groups.items()):
-    print(f'\n📦 {tg}:')
-    for n in names:
-        print(f'   • {n}')"
-```
-
-You should now see **about 10 tools**, including:
-- Weather tools (from before)
-- HR tools (NEW!) like `list_employees`, `get_vacation_balance`, etc.
-
----
-
-## Step 3.5: Test the HR Tool in the Playground
-
-Go back to the **Playground** in your browser and try these prompts:
-
-> 💡 **Tip:** HR tools work well with direct requests. Here are recommended prompts:
-
-**List employees (simple, always works):**
-```
-List all employees
-```
-
-**Get specific employee info:**
-```
-Get employee info for EMP001
-```
-
-**Check vacation balance:**
-```
-Get vacation balance for employee EMP001
-```
-
-**Find job openings:**
-```
-List all job openings
-```
-
-**Create a vacation request:**
-```
-Create a vacation request for employee EMP002 from 2026-02-10 to 2026-02-14
-```
-
-> 📝 **Employee IDs:** EMP001 = Alice Johnson, EMP002 = Bob Smith, EMP003 = Carol Williams
-
-**Use BOTH tools together:**
-```
-List all weather stations and list all employees
-```
-
-```
-Get weather statistics and list job openings
-```
-
-🎉 **Your AI is now using BOTH the weather AND HR tools!**
-
-> ⚠️ **Troubleshooting:** If a complex query fails, try breaking it into simpler requests. For example, instead of "What's the weather in Tokyo and how many vacation days does Alice have?", try asking each question separately.
-
-
-
-
----
-
-## Step 3.6: What You Just Learned
-
-| Before (Part 2) | After (Part 3) |
-|-----------------|----------------|
-| 1 tool group (Weather) | 2 tool groups (Weather + HR) |
+| Before | After |
+|--------|-------|
+| 1 MCP server (Weather) | 2 MCP servers (Weather + HR) |
 | ~5 tools | ~10 tools |
 | Weather questions only | Weather + HR questions |
 
-**Key takeaway:** You added new capabilities to your AI by just updating a configuration file - no coding required!
+**Adding new AI capabilities = updating a config file. No coding required!**
 
 ---
 
-# Part 4: Watch the Admin Demo (30 min)
+# Part 4: Azure OpenAI Demo (Admin Demo)
 
-Now the instructor will show you something cool: adding a cloud AI (Azure OpenAI) alongside your local AI.
+> 🎓 **This section is demonstrated by your instructor.**
 
-**What you'll see:**
-- The same LlamaStack can use multiple AI providers
-- Switch between local (your GPU) and cloud (Azure) with one setting
-- The API stays the same - your code doesn't need to change!
+The instructor will show how LlamaStack can use multiple AI providers - both local (your GPU) and cloud (Azure OpenAI).
+
+## What You'll See
+
+1. **Adding Azure OpenAI** as a second inference provider
+2. **Switching between providers** - same API, different backend
+3. **Comparing responses** from local Llama vs Azure GPT-4
+
+## Key Takeaway
+
+- LlamaStack provides a **unified API** regardless of which AI provider you use
+- You can mix local and cloud AI in the same application
+- Switching providers is just a configuration change
 
 > 📝 **Note:** Only the admin has the Azure API keys, so this is a demo only.
 
@@ -665,12 +471,18 @@ You've completed the LlamaStack Workshop!
 
 ## What You Accomplished Today
 
+### Hands-On (You Did It!)
 ✅ Created your own AI project on OpenShift  
-✅ Deployed a real AI model (Llama 3.2)  
-✅ Connected shared MCP tools (Weather, HR) to your AI  
-✅ Used the Playground to chat with your AI  
-✅ Updated your AI's configuration to add new tools  
-✅ Learned how LlamaStack makes it easy to extend AI capabilities  
+✅ Deployed a real AI model (Llama 3.2-3B) with GPU acceleration  
+✅ Enabled the AI Playground  
+✅ Chatted with your AI using the web interface  
+
+### Learned from Demo (Instructor Showed You)
+✅ How to connect MCP tools (Weather, HR) to LlamaStack  
+✅ How to call tools directly via the API  
+✅ How to use agent-based tool calling  
+✅ How to add multiple AI providers (local + Azure)  
+✅ How easy it is to extend AI capabilities with configuration changes  
 
 ---
 
