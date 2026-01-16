@@ -349,15 +349,23 @@ Get current weather for station VIDP
 
 > ⚠️ **Troubleshooting:** If you get an error about "parameters could not be parsed", try using simpler prompts like "List all weather stations" or "Get weather statistics". The model sometimes has trouble with complex queries.
 
+✅ **Success!** You've completed the hands-on portion of Part 2!
+
 ---
 
-## Step 2.5: Add Weather MCP to LlamaStack Config
+# 🎓 Part 2.5 onwards: Admin Demo
 
-Now we need to connect the Weather MCP server to your AI. The Playground created a ConfigMap called `llama-stack-config` - we'll patch it to add the MCP.
+> **The following sections will be demonstrated by your instructor.** Watch and learn how to configure MCP tools via the ConfigMap.
 
-> 📝 **Note:** The Weather MCP server is shared and running in the `admin-workshop` namespace. We just need to tell your AI where to find it!
+---
 
-**Go back to your terminal and run these commands:**
+## Step 2.5: Add Weather MCP to LlamaStack Config (Admin Demo)
+
+> 🎓 **Watch the instructor demonstrate this section.**
+
+The instructor will show how to connect the Weather MCP server to LlamaStack by patching the ConfigMap.
+
+**What the instructor will show:**
 
 ```bash
 # Step 1: Get the current config
@@ -455,9 +463,11 @@ You should see about **5 tools** (all weather-related).
 
 ---
 
-# Part 3: Add More Tools to Your AI (30 min)
+# Part 3: Add More Tools to Your AI (Admin Demo)
 
-Now let's add the HR tool to your AI. This shows how easy it is to expand your AI's capabilities!
+> 🎓 **This entire section is demonstrated by your instructor.**
+
+Now the instructor will show how to add the HR tool to expand the AI's capabilities!
 
 ## Step 3.1: See the Current Configuration
 
